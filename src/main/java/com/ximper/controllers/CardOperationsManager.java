@@ -113,8 +113,7 @@ public class CardOperationsManager {
 			System.out.println("STOMP message sent");
 		}
 	}
-	
-	@SuppressWarnings("restriction")
+
 	public String getTagId(){
 		String tagId="";
 		ReaderStatusObject readerStatus=loyaltyCardReader.connect();
@@ -144,15 +143,14 @@ public class CardOperationsManager {
 		}else{
 			if(readerStatus.getCardChannel()!=null){
 				try {
-					tagId=loyaltyCardReader.getTagId(readerStatus.getCardChannel());
-				} catch (CardException e) {
+					tagId=loyaltyCardReader.getUid(readerStatus.getCardChannel());
+				} catch (Exception e) {
 					e.printStackTrace();
 				}
 			}
 		}
 		return tagId;
 	}
-	
 
 	public void sendReload(int reloadProductId, int businessId){
 		try {
@@ -273,16 +271,6 @@ public class CardOperationsManager {
 	
 	private String getTagSerialNumber(String cardTag){
 		return Long.valueOf(cardTag, 16).toString();
-	}
-	
-	private Object sendRequest(RequestMethod requestMethod, Object requestObject, String requestPath, Object response){
-		RestTemplate requestSender=new RestTemplate();
-		if(requestMethod.equals(RequestMethod.POST)){
-			requestSender.postForObject(applicationValues.getApiUrl()+requestPath, requestObject, response.getClass());
-		}else if(requestMethod.equals(RequestMethod.GET)){
-			requestSender.getForObject(applicationValues.getApiUrl()+requestPath, response.getClass(), new Object[]{});
-		}
-		return response;
 	}
 	
 	private void sendJsonMessage(Object object) throws Exception{

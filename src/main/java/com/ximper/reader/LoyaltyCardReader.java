@@ -1,13 +1,13 @@
 package com.ximper.reader;
+import java.io.IOException;
 import java.security.Security;
 import javax.smartcardio.*;
-
 import com.ximper.configurations.CardReaderMessages;
 import com.ximper.tools.Utils;
 
 import jnasmartcardio.Smartcardio;
 
-public class LoyaltyCardReader {
+public class LoyaltyCardReader implements ILoyaltyCardReader{
 
 	@SuppressWarnings("restriction")
 	private Card cardConnection;
@@ -51,19 +51,111 @@ public class LoyaltyCardReader {
 			}
 		return statusObject;
 	}
-	
-	@SuppressWarnings("restriction")
-	public String getTagId(CardChannel cardChannel) throws CardException{
-		String tagId="";
-		byte[] getTagCommand = new byte[] { (byte) 0xFF, (byte) 0xCA, 0x00, (byte) 0x00, (byte) 0x00 };
-		ResponseAPDU responseApdu=cardChannel.transmit(new CommandAPDU(getTagCommand));
-		byte[] response=responseApdu.getBytes();
-		if (responseApdu.getSW() != 0x9000){
-			return "";
-		}else{
-			tagId=Utils.byteArrayToStr(response, CardTypes.MIFARE_CLASSIC_1K.getUidLength()).trim();
-		}
-		cardConnection.disconnect(true);
-		return tagId;
+
+	@Override
+	public boolean lockTag(byte[] eventKey) {
+		// TODO Auto-generated method stub
+		return false;
 	}
+
+	@Override
+	public boolean authenticate(byte[] eventKey) {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
+	@Override
+	public boolean assignTag(int tokens, int ticketType, int eventId, byte[] eventKey, String name) {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
+	@Override
+	public boolean setTokens(int tokens) {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
+	@Override
+	public boolean setAccess(String page, int accessQty) {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
+	@Override
+	public int readEventId() {
+		// TODO Auto-generated method stub
+		return 0;
+	}
+
+	@Override
+	public boolean cleanTag(int toPage) {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
+	@Override
+	public boolean resetTag() {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
+	@Override
+	public boolean setName(String name) {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
+	@Override
+	public String readName() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public String getUid(CardChannel channel) throws Exception {
+		String deviceId;
+
+		try {
+			/*
+			 * APDU Command: "GET_DATA" Example: FF CA 00 00 00 - 06 is the page
+			 * number - 10 is the response data length(must be multiple of 16
+			 * bytes)
+			 */
+			byte[] cmd = new byte[] { (byte) 0xFF, (byte) 0xCA, 0x00, (byte) 0x00, (byte) 0x00 };
+			//Log.d("readTagId()", "Command: " + Utils.byteArrayToStr(cmd, cmd.length));
+
+			/*
+			 * byte[] response = new byte[128]; int responseLength =
+			 * this.reader.transmit(0, cmd, cmd.length, response,
+			 * response.length);
+			 */
+			ResponseAPDU responseApdu = channel.transmit(new CommandAPDU(cmd));
+			byte[] response = responseApdu.getBytes();
+
+			/*
+			 * Sample Response: 04 10 5F 2A A1 43 80 [90 00] 90 00 - SUCCESS
+			 * Otherwise - FAIL
+			 *
+			 * Validate Response
+			 */
+			if (responseApdu.getSW() != 0x9000) { // Response Code FAILED
+				throw new IOException("Read device ID failed...");
+			}
+
+			deviceId = Utils.byteArrayToStr(response, 7).trim();
+			//Log.d(TAG, "TAG ID: " + deviceId);
+		} catch (IOException ioe) {
+			ioe.printStackTrace();
+			deviceId = "";
+		} catch (CardException e) {
+			e.printStackTrace();
+			deviceId = "";
+		}
+
+		return deviceId;
+	}
+
+
+	
 }

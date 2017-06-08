@@ -7,6 +7,7 @@ public class InquiryObject {
 	private long userId;
 	private int businessId;
 	private String serialNumber;
+	private String cardHolderName;
 	
 	public double getCardLoadBalance() {
 		return cardLoadBalance;
@@ -43,5 +44,11 @@ public class InquiryObject {
 	}
 	public void setSerialNumber(String serialNumber) {
 		this.serialNumber = serialNumber;
+	}
+	public String getCardHolderName() {
+		return cardHolderName;
+	}
+	public void setCardHolderName(String cardHolderName) {
+		this.cardHolderName = cardHolderName;
 	}
 }
