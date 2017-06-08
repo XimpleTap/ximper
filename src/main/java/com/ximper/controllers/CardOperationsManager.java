@@ -114,7 +114,7 @@ public class CardOperationsManager {
 		}
 	}
 
-	public String getTagId(){
+	public String getUid(){
 		String tagId="";
 		ReaderStatusObject readerStatus=loyaltyCardReader.connect();
 		String readerMessage=readerStatus.getConnectionMesssage();
@@ -151,123 +151,6 @@ public class CardOperationsManager {
 		}
 		return tagId;
 	}
-
-	public void sendReload(int reloadProductId, int businessId){
-		try {
-			String tagId=getTagId();
-			if(tagId!=""){
-				ReloadObject reload=new ReloadObject();
-				reload.setCardNumber(getTagSerialNumber(tagId));
-				reload.setProductId(reloadProductId);
-				reload.setBusinessId(businessId);
-				RestTemplate restClient=new RestTemplate();
-				TopupApiResponse response=restClient.postForObject(applicationValues.getApiUrl()+TapApiServerEndpoints.CARD_RELOAD, reload, TopupApiResponse.class);
-				sendJsonMessage(response);
-			}
-		} catch (Exception ex) {
-			sendApiConnectionStatus(ex.getMessage());
-			ex.printStackTrace();
-			
-		}
-		
-	}
-
-	public void sendDeduct(double deductAmount){
-		try {
-			String tagId=getTagId();
-			if(tagId!=""){
-				DeductObject deduct=new DeductObject();
-				deduct.setCardNumber(tagId);
-				deduct.setTopUpAmount(deductAmount);
-			}
-		}catch (Exception ex) {
-			ex.printStackTrace();
-		}
-		
-	}
-	
-	public void claimRewards(ClaimRewardRequest claimRequest){
-		try {
-			String tagId=getTagId();
-			if(tagId!=""){
-				RestTemplate restClient=new RestTemplate();
-				String url=(applicationValues.getApiUrl()+TapApiServerEndpoints.REWARDS_CLAIM);
-				ApiClaimRewardRequest claimReq=new ApiClaimRewardRequest();
-				claimReq.setBusinessId(claimRequest.getBusinessId());
-				claimReq.setCardNumber(getTagSerialNumber(tagId));
-				claimReq.setRewardsToClaim(claimRequest.getRewardsToClaim());
-				claimReq.setCashierId(claimRequest.getCashierId());
-				ClaimRewardApiResponse response=restClient.postForObject(url, claimReq, ClaimRewardApiResponse.class);
-				sendJsonMessage(response);
-			}
-		}catch (Exception ex) {
-			sendApiConnectionStatus(ex.getMessage());
-			ex.printStackTrace();
-		}
-		
-	}
-	
-	@SuppressWarnings({"restriction"})
-	public void inquireBalance(){
-		try {
-			String tagId=getTagId();
-			if(tagId!=""){
-				String cardNumber=getTagSerialNumber(tagId);
-				RestTemplate restClient=new RestTemplate();
-				String url=(applicationValues.getApiUrl()+TapApiServerEndpoints.CARD_INQUIRE_BALANCE).replace("{cardNumber}", cardNumber);
-				InquiryApiResponse response=restClient.getForObject(url, InquiryApiResponse.class);
-				sendJsonMessage(response);
-			}
-		} catch (CardException e) {
-			sendApiConnectionStatus(e.getMessage());
-			e.printStackTrace();
-		}catch (Exception ex) {
-			sendApiConnectionStatus(ex.getMessage());
-			ex.printStackTrace();
-		}
-		
-	}
-	
-	public void acquireProducts(AcquireProductRequest acquireRequest){
-		try {
-			String tagId=getTagId();
-			if(tagId!=""){
-				ApiAcquireProductRequest apiRequest=new ApiAcquireProductRequest();
-				apiRequest.setCardNumber(getTagSerialNumber(tagId));
-				apiRequest.setBusinessId(acquireRequest.getBusinessId());
-				apiRequest.setProductsToAcquire(acquireRequest.getProductsToAcquire());
-				RestTemplate restClient=new RestTemplate();
-				String url=applicationValues.getApiUrl()+TapApiServerEndpoints.PRODUCTS_SERVICES_ACQUIRE;
-				AcquireProductApiResponse response=restClient.postForObject(url, apiRequest, AcquireProductApiResponse.class);
-				sendJsonMessage(response);
-			}
-		} catch (Exception ex) {
-			sendApiConnectionStatus(ex.getMessage());
-			ex.printStackTrace();
-		}
-		
-	}
-	
-	public void sellCard(CardSalesRequest cardRequest){
-		try {
-			String tagId=getTagId();
-			if(tagId!=""){
-				ApiCardSalesRequest cardReq=new ApiCardSalesRequest();
-				cardReq.setCardNumber(getTagSerialNumber(tagId));
-				cardReq.setBusinessId(cardRequest.getBusinessId());
-				cardReq.setCardGroupId(cardRequest.getCardGroupId());
-				cardReq.setCashierId(cardRequest.getCardGroupId());
-				RestTemplate restClient=new RestTemplate();
-				String url=applicationValues.getApiUrl()+TapApiServerEndpoints.CARD_SELL;
-				ApiResponse response=restClient.postForObject(url, cardReq, ApiResponse.class);
-				sendJsonMessage(response);
-			}
-		} catch (Exception ex) {
-			sendApiConnectionStatus(ex.getMessage());
-			ex.printStackTrace();
-		}
-		
-	}
 	
 	private String getTagSerialNumber(String cardTag){
 		return Long.valueOf(cardTag, 16).toString();
@@ -278,18 +161,5 @@ public class CardOperationsManager {
 		String jsonMessage=gson.toJson(object);
 		sendMessage(jsonMessage);
 	}
-	
-	private void sendApiConnectionStatus(String message){
-		ApiResponse response=new ApiResponse();
-		response.setStatus(ResponseStatus.ERROR);
-		response.setStatusCode(ResponseCodes.ERROR);
-		response.setApiData(message);
-		try {
-			sendJsonMessage(response);
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-	}
-	
 	
 }

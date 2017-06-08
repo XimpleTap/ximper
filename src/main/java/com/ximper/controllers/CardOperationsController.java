@@ -43,7 +43,7 @@ public class CardOperationsController {
 		taskExecutor.execute(new Runnable() {
 			@Override
 			public void run() {
-				cardOperationsManager.sendReload(reloadProductid, reloadBusinessId);
+				//cardOperationsManager.sendReload(reloadProductid, reloadBusinessId);
 			}
 		});
 		response.setStatus(ResponseStatus.OK);
@@ -65,7 +65,7 @@ public class CardOperationsController {
 		taskExecutor.execute(new Runnable() {
 			@Override
 			public void run() {
-				cardOperationsManager.sendDeduct(deductAmount);;
+				//cardOperationsManager.sendDeduct(deductAmount);;
 			}
 		});
 		response.setApiData(null);
@@ -85,7 +85,7 @@ public class CardOperationsController {
 		taskExecutor.execute(new Runnable() {
 			@Override
 			public void run() {
-				cardOperationsManager.inquireBalance();
+				//cardOperationsManager.inquireBalance();
 			}
 		});
 		response.setApiData(null);
@@ -106,7 +106,7 @@ public class CardOperationsController {
 		taskExecutor.execute(new Runnable() {
 			@Override
 			public void run() {
-				cardOperationsManager.claimRewards(claimReq);
+				//cardOperationsManager.claimRewards(claimReq);
 			}
 		});
 		response.setApiData(null);
@@ -128,7 +128,7 @@ public class CardOperationsController {
 		taskExecutor.execute(new Runnable() {
 			@Override
 			public void run() {
-				cardOperationsManager.acquireProducts(acquireReq);
+				//cardOperationsManager.acquireProducts(acquireReq);
 			}
 		});
 		response.setApiData(null);
@@ -150,7 +150,7 @@ public class CardOperationsController {
 		taskExecutor.execute(new Runnable() {
 			@Override
 			public void run() {
-				cardOperationsManager.sellCard(cardReq);
+				//cardOperationsManager.sellCard(cardReq);
 			}
 		});
 		response.setApiData(null);
