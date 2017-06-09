@@ -2,6 +2,8 @@ package com.ximper.controllers;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.converter.StringMessageConverter;
 import org.springframework.messaging.simp.stomp.StompHeaders;
@@ -20,7 +22,11 @@ import com.ximper.configurations.ApplicationValues;
 import com.ximper.configurations.CardReaderMessages;
 import com.ximper.configurations.ResponseCodes;
 import com.ximper.configurations.ResponseStatus;
+import com.ximper.configurations.TransactionTypes;
 import com.ximper.objects.CardOperationsDAO;
+import com.ximper.objects.InquiryObject;
+import com.ximper.objects.PolicyObject;
+import com.ximper.reader.CardConstants;
 import com.ximper.reader.LoyaltyCardReader;
 import com.ximper.reader.ReaderStatusObject;
 import com.ximper.stomp.StompHandler;
@@ -89,7 +95,7 @@ public class CardOperationsManager {
 		}
 	}
 
-	public boolean connect(){
+	private boolean isConnected(){
 		String tagId="";
 		ReaderStatusObject readerStatus=loyaltyCardReader.connect();
 		String readerMessage=readerStatus.getConnectionMesssage();
@@ -129,6 +135,7 @@ public class CardOperationsManager {
 				}
 			}
 		}
+		
 		return true;
 	}
 	
@@ -136,10 +143,95 @@ public class CardOperationsManager {
 		return Long.valueOf(cardTag, 16).toString();
 	}
 	
-	public void processReload(int loadDenomId){
-		int loadAmount=0;
-		loyaltyCardReader.reload(loadAmount);
-		cardOperationsDAO.processReload();
+	public void processReload(int denomId, int cashierId){
+		
+		int newBalance=0;
+		int newPoints=0;
+		int newAdditionalOnNextReload=0;
+		
+		int oldBalance=0;
+		int oldPoints=0;
+		int oldAdditionalOnNextReload=0;
+		int topUpAmount=0;
+		int bonusAmount=0;
+		
+		//PolicyObject policy;
+		try{
+			if(isConnected()){
+				if(denomId==0){
+					loyaltyCardReader.writeToCardMemory(CardConstants.LOAD_PAGE, 0);
+					loyaltyCardReader.writeToCardMemory(CardConstants.POINTS_PAGE, 0);
+					loyaltyCardReader.writeToCardMemory(CardConstants.ADDITIONAL_ON_NEXT_RELOAD_PAGE, 0);
+					return;
+				}
+				
+				oldBalance=loyaltyCardReader.readDataFromMemory(CardConstants.LOAD_PAGE);
+				oldPoints=loyaltyCardReader.readDataFromMemory(CardConstants.POINTS_PAGE);
+				oldAdditionalOnNextReload=loyaltyCardReader.readDataFromMemory(CardConstants.ADDITIONAL_ON_NEXT_RELOAD_PAGE);
+				Map<String, Object> result=cardOperationsDAO.getTopUpValues(denomId, oldBalance, oldPoints, oldAdditionalOnNextReload);
+				
+				newBalance=(int)result.get("outnewbalance");
+				newPoints=(int)result.get("outnewpoints");
+				newAdditionalOnNextReload=(int)result.get("outnewadditionalonnextreload");
+				topUpAmount=(int)result.get("outtopupamount");
+				bonusAmount=(int)result.get("outbonusamount");
+				
+				if(loyaltyCardReader.writeToCardMemory(CardConstants.LOAD_PAGE, newBalance)){
+					if(loyaltyCardReader.writeToCardMemory(CardConstants.POINTS_PAGE, newPoints)){
+						if(loyaltyCardReader.writeToCardMemory(CardConstants.ADDITIONAL_ON_NEXT_RELOAD_PAGE, newAdditionalOnNextReload)){
+							try{
+								cardOperationsDAO.insertReloadTransactionLog(denomId, cashierId, oldBalance, newBalance, topUpAmount, bonusAmount);
+							}catch(Exception e){
+								loyaltyCardReader.writeToCardMemory(CardConstants.LOAD_PAGE, oldBalance);
+								loyaltyCardReader.writeToCardMemory(CardConstants.POINTS_PAGE, oldPoints);
+								loyaltyCardReader.writeToCardMemory(CardConstants.ADDITIONAL_ON_NEXT_RELOAD_PAGE, oldAdditionalOnNextReload);
+								e.printStackTrace();
+							}
+							
+						}
+					}
+				}
+				
+			}
+			
+		}catch(Exception e){
+			e.printStackTrace();
+		}
+		
+		
+	}
+	
+	public void processInquiry(){
+		int oldBalance=0;
+		int oldPoints=0;
+		try{
+			if(isConnected()){
+				oldBalance=loyaltyCardReader.readDataFromMemory(CardConstants.LOAD_PAGE);
+				oldPoints=loyaltyCardReader.readDataFromMemory(CardConstants.POINTS_PAGE);
+				InquiryObject iObject=new InquiryObject();
+				iObject.setCardLoadBalance(oldBalance);
+				iObject.setCardPointsBalance(oldPoints);
+				ApiResponse response=new ApiResponse();
+				response.setTransactionType(TransactionTypes.INQUIRE);
+				Gson gson=new Gson();
+				try {
+					response.setStatus(ResponseStatus.OK);
+					response.setStatusCode(ResponseCodes.OK);
+					response.setApiData(iObject);
+					sendMessage(gson.toJson(response));
+				} catch (Exception e) {
+					response.setStatus(ResponseStatus.OK);
+					response.setStatusCode(ResponseCodes.OK);
+					response.setApiData(iObject);
+					e.printStackTrace();
+				}
+			}
+			
+		}catch(Exception e){
+			e.printStackTrace();
+		}
+		
+		
 	}
 	
 }

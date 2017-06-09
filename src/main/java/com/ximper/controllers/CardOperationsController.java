@@ -22,11 +22,13 @@ public class CardOperationsController {
 	
 	@RequestMapping(value=TapEndpoints.TAP_CARD_BALANCE_TOPUP, method=RequestMethod.GET)
 	public ApiResponse processReload(
-			@PathVariable int denomId
+			@PathVariable int denomId,
+			@PathVariable int cashierId
 			)
 	{
 
 		final int reloadProductid=denomId;
+		final int cashier=cashierId;
 		ApiResponse response=new ApiResponse();
 		ThreadPoolTaskExecutor tpExec=new ThreadPoolTaskExecutor();
 		tpExec.initialize();
@@ -34,7 +36,7 @@ public class CardOperationsController {
 		taskExecutor.execute(new Runnable() {
 			@Override
 			public void run() {
-				cardOperationsManager.processReload(reloadProductid);
+				cardOperationsManager.processReload(reloadProductid, cashier);
 			}
 		});
 		response.setStatus(ResponseStatus.OK);
@@ -76,7 +78,7 @@ public class CardOperationsController {
 		taskExecutor.execute(new Runnable() {
 			@Override
 			public void run() {
-				//cardOperationsManager.inquireBalance();
+				cardOperationsManager.processInquiry();
 			}
 		});
 		response.setApiData(null);

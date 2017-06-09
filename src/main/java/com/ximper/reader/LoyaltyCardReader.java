@@ -4,12 +4,13 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.security.Security;
 import javax.smartcardio.*;
+
 import com.ximper.configurations.CardReaderMessages;
 import com.ximper.tools.Utils;
 
 import jnasmartcardio.Smartcardio;
 
-public class LoyaltyCardReader implements ILoyaltyCardReader{
+public class LoyaltyCardReader{
 
 	@SuppressWarnings("restriction")
 	private Card cardConnection;
@@ -24,7 +25,6 @@ public class LoyaltyCardReader implements ILoyaltyCardReader{
 	private CardChannel cardChannel;
 	
 	private boolean isCardPresent;
-	
 	
 	@SuppressWarnings("restriction")
 	public ReaderStatusObject connect(){
@@ -52,64 +52,10 @@ public class LoyaltyCardReader implements ILoyaltyCardReader{
 				statusObject.setCardChannel(null);
 				statusObject.setConnectionMesssage(CardReaderMessages.NO_READER_ATTACHED);
 			}
+		
 		return statusObject;
 	}
 
-	@Override
-	public boolean lockTag(byte[] eventKey) {
-		// TODO Auto-generated method stub
-		return false;
-	}
-
-	@Override
-	public boolean authenticate(byte[] eventKey) {
-		// TODO Auto-generated method stub
-		return false;
-	}
-
-	@Override
-	public boolean assignTag(int tokens, int ticketType, int eventId, byte[] eventKey, String name) {
-		// TODO Auto-generated method stub
-		return false;
-	}
-
-	@Override
-	public boolean setAccess(String page, int accessQty) {
-		// TODO Auto-generated method stub
-		return false;
-	}
-
-	@Override
-	public int readEventId() {
-		// TODO Auto-generated method stub
-		return 0;
-	}
-
-	@Override
-	public boolean cleanTag(int toPage) {
-		// TODO Auto-generated method stub
-		return false;
-	}
-
-	@Override
-	public boolean resetTag() {
-		// TODO Auto-generated method stub
-		return false;
-	}
-
-	@Override
-	public boolean setName(String name) {
-		// TODO Auto-generated method stub
-		return false;
-	}
-
-	@Override
-	public String readName() {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
 	public String getUid(CardChannel channel) throws Exception {
 		connect();
 		String deviceId;
@@ -154,8 +100,7 @@ public class LoyaltyCardReader implements ILoyaltyCardReader{
 		return deviceId;
 	}
 
-	@Override
-	public boolean reload(int loadAmount) {
+	public boolean reload(int loadAmount, int rewardPoint, int futureLoad, int futurePoint) {
 		try {
 			connect();
 		} catch (Exception e) {
@@ -199,5 +144,38 @@ public class LoyaltyCardReader implements ILoyaltyCardReader{
 	}
 
 
-	
+	public int readDataFromMemory(int pageNumber) {
+		int result = 0;
+
+		try {
+			/*
+			 * APDU Command: "GET_DATA" Example: FF B0 00 06 10 - 06 is the page
+			 * number - 10 is the response data length(must be multiple of 16
+			 * bytes)
+			 */
+			byte[] cmd = new byte[] { (byte) 0xFF, (byte) 0xB0, 0x00, (byte) pageNumber,
+					(byte) 0x10 /* Multiple of 16 bytes */ };
+			ResponseAPDU responseApdu = cardChannel.transmit(new CommandAPDU(cmd));
+			byte[] response = responseApdu.getBytes();
+			if (responseApdu.getSW() != 0x9000) {
+				throw new IOException("GET_DATA failed...");
+			}
+			byte[] value = new byte[4];
+			value[0] = response[0];
+			value[1] = response[1];
+			value[2] = response[2];
+			value[3] = response[3];
+
+			ByteBuffer bb = ByteBuffer.wrap(value);
+
+			result = bb.getInt();
+		} catch (IOException ioe) {
+			ioe.printStackTrace();
+		} catch (CardException ce) {
+			ce.printStackTrace();
+		}
+
+		return result;
+	}
+
 }
