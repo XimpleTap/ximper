@@ -21,12 +21,6 @@ public class ApplicationValues {
 	@Value("${rmq.stomp.port}")
 	private int port;
 	
-	@Value("${api.server.baseurl}")
-	private String apiUrl;
-	
-	@Value("${api.server.port}")
-	private int apiPort;
-	
 	public String getHost() {
 		return host;
 	}
@@ -57,16 +51,5 @@ public class ApplicationValues {
 	public void setPort(int port) {
 		this.port = port;
 	}
-	public String getApiUrl() {
-		return apiUrl;
-	}
-	public void setApiUrl(String apiUrl) {
-		this.apiUrl = apiUrl;
-	}
-	public int getApiPort() {
-		return apiPort;
-	}
-	public void setApiPort(int apiPort) {
-		this.apiPort = apiPort;
-	}
+	
 }

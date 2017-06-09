@@ -24,16 +24,6 @@ public class AppConfiguration {
 		return new CardOperationsManager();
 	}
 	
-	/*@Bean(name = "sqliteDataSource")
-	@ConfigurationProperties(prefix="spring.db_sqlite") 
-	public DataSource sqliteDataSource() {
-	    return DataSourceBuilder.create().build();
-	}
-	 
-	@Bean(name = "sqliteJdbcTemplate") 
-    public JdbcTemplate sqliteJdbcTemplate(@Qualifier("sqliteDataSource") DataSource sqliteDb) { 
-        return new JdbcTemplate(sqliteDb); 
-    } */
 	
 	
 }
