@@ -16,10 +16,6 @@ import com.ximper.configurations.ApiResponse;
 import com.ximper.configurations.ResponseCodes;
 import com.ximper.configurations.ResponseStatus;
 import com.ximper.configurations.TapEndpoints;
-import com.ximper.objects.AcquireProductRequest;
-import com.ximper.objects.CardSalesRequest;
-import com.ximper.objects.ClaimRewardRequest;
-
 
 @RestController
 public class CardOperationsController {
@@ -29,13 +25,11 @@ public class CardOperationsController {
 	
 	@RequestMapping(value=TapEndpoints.TAP_CARD_BALANCE_TOPUP, method=RequestMethod.GET)
 	public ApiResponse processReload(
-			@PathVariable int productId,
-			@PathVariable int businessId
+			@PathVariable int denomId
 			)
 	{
 
-		final int reloadProductid=productId;
-		final int reloadBusinessId=businessId;
+		final int reloadProductid=denomId;
 		ApiResponse response=new ApiResponse();
 		ThreadPoolTaskExecutor tpExec=new ThreadPoolTaskExecutor();
 		tpExec.initialize();
@@ -43,7 +37,7 @@ public class CardOperationsController {
 		taskExecutor.execute(new Runnable() {
 			@Override
 			public void run() {
-				//cardOperationsManager.sendReload(reloadProductid, reloadBusinessId);
+				cardOperationsManager.processReload(reloadProductid);
 			}
 		});
 		response.setStatus(ResponseStatus.OK);
@@ -95,10 +89,9 @@ public class CardOperationsController {
 	}
 	
 	@RequestMapping(value=TapEndpoints.CLAIM_REWARDS, method=RequestMethod.POST)
-	public ApiResponse claimRewards(@RequestBody ClaimRewardRequest claimRequest)
+	public ApiResponse claimRewards()
 	{
 
-		final ClaimRewardRequest claimReq=claimRequest;
 		ApiResponse response=new ApiResponse();
 		ThreadPoolTaskExecutor tpExec=new ThreadPoolTaskExecutor();
 		tpExec.initialize();
@@ -106,7 +99,7 @@ public class CardOperationsController {
 		taskExecutor.execute(new Runnable() {
 			@Override
 			public void run() {
-				//cardOperationsManager.claimRewards(claimReq);
+				
 			}
 		});
 		response.setApiData(null);
@@ -117,10 +110,8 @@ public class CardOperationsController {
 	
 	@RequestMapping(value=TapEndpoints.ACQUIRE_PRODUCTS, method=RequestMethod.POST)
 	public ApiResponse acquireProducts(
-			@RequestBody AcquireProductRequest acquireRequest)
+			)
 	{
-
-		final AcquireProductRequest acquireReq=acquireRequest;
 		ApiResponse response=new ApiResponse();
 		ThreadPoolTaskExecutor tpExec=new ThreadPoolTaskExecutor();
 		tpExec.initialize();
@@ -139,10 +130,8 @@ public class CardOperationsController {
 	
 	@RequestMapping(value=TapEndpoints.TAP_CARD_SALES, method=RequestMethod.POST)
 	public ApiResponse processCardSales(
-			@RequestBody CardSalesRequest cardRequest)
+			)
 	{
-
-		final CardSalesRequest cardReq=cardRequest;
 		ApiResponse response=new ApiResponse();
 		ThreadPoolTaskExecutor tpExec=new ThreadPoolTaskExecutor();
 		tpExec.initialize();

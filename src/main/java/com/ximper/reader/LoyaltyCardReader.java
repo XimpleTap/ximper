@@ -1,5 +1,7 @@
 package com.ximper.reader;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.security.Security;
 import javax.smartcardio.*;
 import com.ximper.configurations.CardReaderMessages;
@@ -22,6 +24,7 @@ public class LoyaltyCardReader implements ILoyaltyCardReader{
 	private CardChannel cardChannel;
 	
 	private boolean isCardPresent;
+	
 	
 	@SuppressWarnings("restriction")
 	public ReaderStatusObject connect(){
@@ -71,12 +74,6 @@ public class LoyaltyCardReader implements ILoyaltyCardReader{
 	}
 
 	@Override
-	public boolean setTokens(int tokens) {
-		// TODO Auto-generated method stub
-		return false;
-	}
-
-	@Override
 	public boolean setAccess(String page, int accessQty) {
 		// TODO Auto-generated method stub
 		return false;
@@ -114,6 +111,7 @@ public class LoyaltyCardReader implements ILoyaltyCardReader{
 
 	@Override
 	public String getUid(CardChannel channel) throws Exception {
+		connect();
 		String deviceId;
 
 		try {
@@ -130,7 +128,7 @@ public class LoyaltyCardReader implements ILoyaltyCardReader{
 			 * this.reader.transmit(0, cmd, cmd.length, response,
 			 * response.length);
 			 */
-			ResponseAPDU responseApdu = channel.transmit(new CommandAPDU(cmd));
+			ResponseAPDU responseApdu = cardChannel.transmit(new CommandAPDU(cmd));
 			byte[] response = responseApdu.getBytes();
 
 			/*
@@ -154,6 +152,50 @@ public class LoyaltyCardReader implements ILoyaltyCardReader{
 		}
 
 		return deviceId;
+	}
+
+	@Override
+	public boolean reload(int loadAmount) {
+		try {
+			getUid(null);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return writeToCardMemory(4,loadAmount);
+	}
+	
+	@SuppressWarnings("restriction")
+	public boolean writeToCardMemory(int pageNumber, int dataToWrite) {
+		boolean result;
+		try {
+			/*
+			 * APDU Command: "WRITE_DATA" Example: FF D6 00 06 04 00 00 00 01 -
+			 * 06 is the page number - 04 is the input data length - 00 00 00 01
+			 * is the input data
+			 */
+			byte[] dataBytes = ByteBuffer.allocate(4).putInt(dataToWrite).array();
+			byte[] prefix = new byte[] { (byte) 0xFF, (byte) 0xD6, 0x00,(byte) pageNumber};
+			ByteArrayOutputStream payload = new ByteArrayOutputStream();
+			payload.write(prefix);
+			payload.write(dataBytes.length);
+			payload.write(dataBytes);
+
+			byte[] cmd = payload.toByteArray();
+			ResponseAPDU responseApdu = cardChannel.transmit(new CommandAPDU(cmd));
+			byte[] response = responseApdu.getBytes();
+			if (responseApdu.getSW() != 0x9000) {
+				throw new IOException();
+			}
+			result = true;
+		} catch (IOException ioe) {
+			ioe.printStackTrace();
+			result = false;
+		} catch (CardException ce) {
+			ce.printStackTrace();
+			result = false;
+		}
+
+		return result;
 	}
 
 

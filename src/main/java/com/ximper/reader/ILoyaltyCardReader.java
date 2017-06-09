@@ -59,7 +59,7 @@ public interface ILoyaltyCardReader {
 
     boolean assignTag(int tokens, int ticketType, int eventId, byte[] eventKey, String name);
 
-    boolean setTokens(int tokens);
+    boolean reload(int tokens);
 
     boolean setAccess(String page, int accessQty);
 

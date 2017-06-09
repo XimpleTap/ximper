@@ -65,7 +65,6 @@
   			<version>4.1.0</version>
 		</dependency>
 		
-		
 		<dependency>    
     		<groupId>com.google.code.gson</groupId>
    			<artifactId>gson</artifactId>
@@ -76,6 +75,12 @@
 			<groupId>org.eclipse.jetty</groupId>
 			<artifactId>jetty-client</artifactId>
 			<version>9.3.18.v20170406</version>
+		</dependency>
+		
+		<dependency>
+    		<groupId>org.springframework</groupId>
+    		<artifactId>spring-jdbc</artifactId>
+    		<version>4.2.4.RELEASE</version>
 		</dependency>
 	</dependencies>
 
