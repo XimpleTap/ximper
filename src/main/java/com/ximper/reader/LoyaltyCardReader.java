@@ -157,7 +157,7 @@ public class LoyaltyCardReader implements ILoyaltyCardReader{
 	@Override
 	public boolean reload(int loadAmount) {
 		try {
-			getUid(null);
+			connect();
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
