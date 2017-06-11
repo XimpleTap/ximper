@@ -17,18 +17,6 @@ public class CardOperationsDAO {
 	@Autowired
 	JdbcTemplate jdbcTemplate;
 	
-	public JdbcTemplate getJdbcTemplate() {
-		return jdbcTemplate;
-	}
-
-	public void setJdbcTemplate(JdbcTemplate jdbcTemplate) {
-		this.jdbcTemplate = jdbcTemplate;
-	}
-
-	public void recordReloadOperations(){
-		
-	}
-	
 	public PolicyObject getPolicy() throws Exception{
 		return jdbcTemplate.queryForObject("SELECT * FROM policies LIMIT 1", new PolicyObjectMapper(), new Object[]{});
 	}
@@ -45,7 +33,16 @@ public class CardOperationsDAO {
 		return result;
 	}
 	
-	public void insertReloadTransactionLog(int denomId, int cashierId, int oldBalance, int newBalance, int topUpAmount, int bonusAmount) throws Exception{
+	public Map<String,Object> getCardValues(int cardGroupId) throws Exception{
+		SimpleJdbcCall storeProc=new SimpleJdbcCall(jdbcTemplate).withProcedureName("GET_CARD_GROUP_DETAIL");
+		MapSqlParameterSource param=new MapSqlParameterSource();
+		param.addValue("inCardGroupId", cardGroupId);
+		SqlParameterSource params=param;
+		Map<String, Object> result=storeProc.execute(params);
+		return result;
+	}
+	
+	public void insertReloadTransactionLog(int denomId, int cashierId, int oldBalance, int newBalance, int topUpAmount, int bonusAmount, String tagId) throws Exception{
 		SimpleJdbcCall storeProc=new SimpleJdbcCall(jdbcTemplate).withProcedureName("INSERT_TOPUP_TRANSACTION_LOG");
 		MapSqlParameterSource param=new MapSqlParameterSource();
 		param.addValue("inDenomId", denomId);
@@ -54,6 +51,19 @@ public class CardOperationsDAO {
 		param.addValue("inTopUpAmount", topUpAmount);
 		param.addValue("inBonusAmount", bonusAmount);
 		param.addValue("inCashierId", cashierId);
+		param.addValue("inTagId", tagId);
+		SqlParameterSource params=param;
+		storeProc.execute(params);
+	}
+	
+	public void insertCardSaleTransactionLog(int cashierId, int cardGroupId, int cardPrice, int preloadedAmount, String tagId) throws Exception{
+		SimpleJdbcCall storeProc=new SimpleJdbcCall(jdbcTemplate).withProcedureName("INSERT_CARD_SALES_TRANSACTION_LOG");
+		MapSqlParameterSource param=new MapSqlParameterSource();
+		param.addValue("inCardGroupId", cardGroupId);
+		param.addValue("inCashierId", cashierId);
+		param.addValue("inPrice", cardPrice);
+		param.addValue("inPreloadedAmount", preloadedAmount);
+		param.addValue("inTagId", tagId);
 		SqlParameterSource params=param;
 		storeProc.execute(params);
 	}

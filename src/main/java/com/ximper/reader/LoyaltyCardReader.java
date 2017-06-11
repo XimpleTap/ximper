@@ -3,6 +3,8 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.security.Security;
+import java.util.Arrays;
+
 import javax.smartcardio.*;
 
 import com.ximper.configurations.CardReaderMessages;
@@ -56,10 +58,8 @@ public class LoyaltyCardReader{
 		return statusObject;
 	}
 
-	public String getUid(CardChannel channel) throws Exception {
-		connect();
-		String deviceId;
-
+	public String getTagId() throws Exception {
+		String tagId;
 		try {
 			/*
 			 * APDU Command: "GET_DATA" Example: FF CA 00 00 00 - 06 is the page
@@ -77,27 +77,20 @@ public class LoyaltyCardReader{
 			ResponseAPDU responseApdu = cardChannel.transmit(new CommandAPDU(cmd));
 			byte[] response = responseApdu.getBytes();
 
-			/*
-			 * Sample Response: 04 10 5F 2A A1 43 80 [90 00] 90 00 - SUCCESS
-			 * Otherwise - FAIL
-			 *
-			 * Validate Response
-			 */
 			if (responseApdu.getSW() != 0x9000) { // Response Code FAILED
 				throw new IOException("Read device ID failed...");
 			}
-
-			deviceId = Utils.byteArrayToStr(response, 7).trim();
-			//Log.d(TAG, "TAG ID: " + deviceId);
+			
+			tagId = Utils.byteArrayToStr(response, 7).trim();
 		} catch (IOException ioe) {
 			ioe.printStackTrace();
-			deviceId = "";
+			tagId = "";
 		} catch (CardException e) {
 			e.printStackTrace();
-			deviceId = "";
+			tagId = "";
 		}
 
-		return deviceId;
+		return tagId;
 	}
 
 	public boolean reload(int loadAmount, int rewardPoint, int futureLoad, int futurePoint) {
@@ -178,4 +171,109 @@ public class LoyaltyCardReader{
 		return result;
 	}
 
+	private boolean protectCardMemory(byte[] eventKey) throws Exception{
+		byte[] tagId= getTagId().getBytes();
+		boolean result = false;
+
+		byte pwdAddress = (byte) 0x27;
+		byte packAddress = (byte) 0x28;
+		byte modConfAddress = (byte) 0x25;
+		byte accessConfAddress = (byte) 0x26;
+
+		try {
+			com.ximper.tools.AES128Encryption aes128 = new com.ximper.tools.AES128Encryption(CardConstants.MASTER_KEY, tagId, eventKey);
+			byte[] password = aes128.fetchDiversifiedPassword();
+			byte[] pack = aes128.fetchDiversifiedPack();
+
+			/*
+			 * 1.) SET PASSWORD (on 0x12) [A2:12:##:##:##:##] - Set a 4-byte
+			 * password
+			 */
+			byte[] setPassCmd = new byte[] { (byte) 0xFF, (byte) 0xD6, 0x00, pwdAddress };
+			ByteArrayOutputStream baSetPassword = new ByteArrayOutputStream();
+			baSetPassword.write(setPassCmd);
+			baSetPassword.write(password.length);
+			baSetPassword.write(password);
+
+			ResponseAPDU raSetPass = cardChannel.transmit(new CommandAPDU(baSetPassword.toByteArray()));
+			// Validate if operation is successful
+			if (raSetPass.getSW() != 0x9000) {
+				throw new CardException("");
+			}
+
+			byte[] setPassResponse = raSetPass.getBytes();
+			/*
+			 * 2.) SET Password Acknowledge (on 0x13) [A2:13:##:##:00:00] - Set
+			 * expected response returned by PWD_AUTH operation
+			 */
+			byte[] packCmd = new byte[] { (byte) 0xFF, (byte) 0xD6, 0x00, packAddress };
+			ByteArrayOutputStream baSetPack = new ByteArrayOutputStream();
+			baSetPack.write(packCmd);
+			baSetPack.write(pack.length + 2);
+			baSetPack.write(/* MF0ULx1_PWD_ACK */pack);
+			baSetPack.write(new byte[] { 0x00, 0x00 });
+
+			ResponseAPDU raSetPack = cardChannel.transmit(new CommandAPDU(baSetPack.toByteArray()));
+			// Validate if operation is successful
+			if (raSetPack.getSW() != 0x9000) {
+				throw new CardException("");
+			}
+
+			byte[] setPackResponse = raSetPack.getBytes();
+			byte[] modConfig = new byte[] { 0x00, 0x00, 0x00,
+					(byte) CardConstants.PWD_PROTECT_PAGE };
+			byte[] modConfigCmd = new byte[] { (byte) 0xFF, (byte) 0xD6, 0x00, modConfAddress };
+			ByteArrayOutputStream baSetModConf = new ByteArrayOutputStream();
+			baSetModConf.write(modConfigCmd);
+			baSetModConf.write(modConfig.length);
+			baSetModConf.write(modConfig);
+
+			ResponseAPDU raModConf = cardChannel.transmit(new CommandAPDU(baSetModConf.toByteArray()));
+			// Validate if operation is successful
+			if (raModConf.getSW() != 0x9000) {
+				throw new CardException("");
+			}
+
+			byte[] modConfResponse = raModConf.getBytes();
+			byte[] pwdAuthCmd = new byte[] { (byte) 0xFF, 0x00, 0x00, 0x00, 0x07, (byte) 0xD4, 0x42, (byte) 0x1B };
+			ByteArrayOutputStream baPwdAuth = new ByteArrayOutputStream();
+			baPwdAuth.write(pwdAuthCmd);
+			baPwdAuth.write(password);
+
+			ResponseAPDU raPwdAuth = cardChannel.transmit(new CommandAPDU(baPwdAuth.toByteArray()));
+			if (raPwdAuth.getSW() != 0x9000) {
+				throw new CardException("");
+			}
+
+			byte[] rawPwdAuthResponse = raPwdAuth.getBytes();
+			byte[] pwdAuthResponse = new byte[2];
+			System.arraycopy(rawPwdAuthResponse, 3, pwdAuthResponse, 0, pwdAuthResponse.length);
+
+			if (Arrays.equals(pwdAuthResponse, pack)) {
+				byte[] accessConfig = new byte[] {
+						CardConstants.AUTH_CONFIG, 0x05, 0x00, 0x00 };
+				byte[] accessConfigCmd = new byte[] { (byte) 0xFF, (byte) 0xD6, 0x00, accessConfAddress };
+
+				ByteArrayOutputStream baSetAccessConf = new ByteArrayOutputStream();
+				baSetAccessConf.write(accessConfigCmd);
+				baSetAccessConf.write(accessConfig.length);
+				baSetAccessConf.write(accessConfig);
+
+				ResponseAPDU raSetAccess = cardChannel.transmit(new CommandAPDU(baSetAccessConf.toByteArray()));
+				// Validate if operation is successful
+				if (raSetAccess.getSW() != 0x9000) {
+					throw new CardException("");
+				}
+
+				byte[] setAccessResponse = raSetAccess.getBytes();
+				result = true;
+			} else {
+				throw new IOException("Invalid PACK response");
+			}
+		} catch (CardException | IOException exc) {
+			result = false;
+		}
+
+		return result;
+	}
 }

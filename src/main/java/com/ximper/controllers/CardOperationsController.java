@@ -127,8 +127,10 @@ public class CardOperationsController {
 		return response;
 	}
 	
-	@RequestMapping(value=TapEndpoints.TAP_CARD_SALES, method=RequestMethod.POST)
+	@RequestMapping(value=TapEndpoints.TAP_CARD_SALES, method=RequestMethod.GET)
 	public ApiResponse processCardSales(
+			@PathVariable int groupId,
+			@PathVariable int cashierId
 			)
 	{
 		ApiResponse response=new ApiResponse();
@@ -138,7 +140,7 @@ public class CardOperationsController {
 		taskExecutor.execute(new Runnable() {
 			@Override
 			public void run() {
-				//cardOperationsManager.sellCard(cardReq);
+				cardOperationsManager.processCardSales(groupId, cashierId);
 			}
 		});
 		response.setApiData(null);

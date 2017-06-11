@@ -125,15 +125,6 @@ public class CardOperationsManager {
 				e.printStackTrace();
 				return false;
 			}
-		}else{
-			if(readerStatus.getCardChannel()!=null){
-				try {
-					tagId=loyaltyCardReader.getUid(readerStatus.getCardChannel());
-				} catch (Exception e) {
-					e.printStackTrace();
-					return false;
-				}
-			}
 		}
 		
 		return true;
@@ -158,6 +149,7 @@ public class CardOperationsManager {
 		//PolicyObject policy;
 		try{
 			if(isConnected()){
+				String tagId=loyaltyCardReader.getTagId();
 				if(denomId==0){
 					loyaltyCardReader.writeToCardMemory(CardConstants.LOAD_PAGE, 0);
 					loyaltyCardReader.writeToCardMemory(CardConstants.POINTS_PAGE, 0);
@@ -180,7 +172,7 @@ public class CardOperationsManager {
 					if(loyaltyCardReader.writeToCardMemory(CardConstants.POINTS_PAGE, newPoints)){
 						if(loyaltyCardReader.writeToCardMemory(CardConstants.ADDITIONAL_ON_NEXT_RELOAD_PAGE, newAdditionalOnNextReload)){
 							try{
-								cardOperationsDAO.insertReloadTransactionLog(denomId, cashierId, oldBalance, newBalance, topUpAmount, bonusAmount);
+								cardOperationsDAO.insertReloadTransactionLog(denomId, cashierId, oldBalance, newBalance, topUpAmount, bonusAmount, tagId);
 							}catch(Exception e){
 								loyaltyCardReader.writeToCardMemory(CardConstants.LOAD_PAGE, oldBalance);
 								loyaltyCardReader.writeToCardMemory(CardConstants.POINTS_PAGE, oldPoints);
@@ -234,4 +226,30 @@ public class CardOperationsManager {
 		
 	}
 	
+	public void processCardSales(int cardGroupId, int cashierId){
+		try{
+			if(isConnected()){
+				String tagId=loyaltyCardReader.getTagId();
+				Map<String, Object> result=cardOperationsDAO.getCardValues(cardGroupId);
+				int price=(int)result.get("outprice");
+				int preloadedAmount=(int)result.get("outpreloadedamount");
+				
+				if(loyaltyCardReader.writeToCardMemory(CardConstants.LOAD_PAGE, preloadedAmount)){
+					try{
+						cardOperationsDAO.insertCardSaleTransactionLog(cashierId, cardGroupId, price, preloadedAmount, tagId);
+					}catch(Exception e){
+						loyaltyCardReader.writeToCardMemory(CardConstants.LOAD_PAGE, 0);
+						e.printStackTrace();
+					}
+								
+				}
+				
+			}
+			
+		}catch(Exception e){
+			e.printStackTrace();
+		}
+		
+		
+	}
 }
