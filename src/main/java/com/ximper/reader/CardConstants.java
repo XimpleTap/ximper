@@ -37,14 +37,14 @@ public class CardConstants {
 	public static int LOAD_PAGE = 0x05;
 	public static int ADDITIONAL_ON_NEXT_RELOAD_PAGE = 0x06;	
 	public static int POINTS_PAGE = 0x07;
-	public static int PWD_PROTECT_PAGE = 0xFF;
+	public static int PWD_PROTECT_PAGE = 4;
 	public static int MAX_NAME_LENGTH = 8;
 	public static int REFERENCE_NUM_LENGTH = 4;
 
 	
 	public static byte[] pad = {(byte) 0xAF};
 	
-	public static byte AUTH_CONFIG= (byte)0x00; //(byte) 0xC7;
+	public static byte AUTH_CONFIG = (byte) 0xC7;
 	
 	public static byte[] CARD_KEY=new byte[]{(byte) 0xAA,(byte) 0xCA, (byte) 0x12, (byte) 0xC2};
 	
