@@ -82,8 +82,6 @@ public class Utils {
         int count = 0;
         char c;
         int i;
-
-        // Count number of hex characters
         for (i = 0; i < hexStringLength; i++) {
 
             c = hexString.charAt(i);

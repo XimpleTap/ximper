@@ -149,41 +149,42 @@ public class CardOperationsManager {
 		//PolicyObject policy;
 		try{
 			if(isConnected()){
-				String tagId=loyaltyCardReader.getTagId();
-				if(denomId==0){
-					loyaltyCardReader.writeToCardMemory(CardConstants.LOAD_PAGE, 0);
-					loyaltyCardReader.writeToCardMemory(CardConstants.POINTS_PAGE, 0);
-					loyaltyCardReader.writeToCardMemory(CardConstants.ADDITIONAL_ON_NEXT_RELOAD_PAGE, 0);
-					return;
-				}
-				
-				oldBalance=loyaltyCardReader.readDataFromMemory(CardConstants.LOAD_PAGE);
-				oldPoints=loyaltyCardReader.readDataFromMemory(CardConstants.POINTS_PAGE);
-				oldAdditionalOnNextReload=loyaltyCardReader.readDataFromMemory(CardConstants.ADDITIONAL_ON_NEXT_RELOAD_PAGE);
-				Map<String, Object> result=cardOperationsDAO.getTopUpValues(denomId, oldBalance, oldPoints, oldAdditionalOnNextReload);
-				
-				newBalance=(int)result.get("outnewbalance");
-				newPoints=(int)result.get("outnewpoints");
-				newAdditionalOnNextReload=(int)result.get("outnewadditionalonnextreload");
-				topUpAmount=(int)result.get("outtopupamount");
-				bonusAmount=(int)result.get("outbonusamount");
-				
-				if(loyaltyCardReader.writeToCardMemory(CardConstants.LOAD_PAGE, newBalance)){
-					if(loyaltyCardReader.writeToCardMemory(CardConstants.POINTS_PAGE, newPoints)){
-						if(loyaltyCardReader.writeToCardMemory(CardConstants.ADDITIONAL_ON_NEXT_RELOAD_PAGE, newAdditionalOnNextReload)){
-							try{
-								cardOperationsDAO.insertReloadTransactionLog(denomId, cashierId, oldBalance, newBalance, topUpAmount, bonusAmount, tagId);
-							}catch(Exception e){
-								loyaltyCardReader.writeToCardMemory(CardConstants.LOAD_PAGE, oldBalance);
-								loyaltyCardReader.writeToCardMemory(CardConstants.POINTS_PAGE, oldPoints);
-								loyaltyCardReader.writeToCardMemory(CardConstants.ADDITIONAL_ON_NEXT_RELOAD_PAGE, oldAdditionalOnNextReload);
-								e.printStackTrace();
+				if(loyaltyCardReader.isAuthenticatedBeforeAccess(CardConstants.CARD_KEY)){
+					String tagId=loyaltyCardReader.getTagId();
+					if(denomId==0){
+						loyaltyCardReader.writeToCardMemory(CardConstants.LOAD_PAGE, 0);
+						loyaltyCardReader.writeToCardMemory(CardConstants.POINTS_PAGE, 0);
+						loyaltyCardReader.writeToCardMemory(CardConstants.ADDITIONAL_ON_NEXT_RELOAD_PAGE, 0);
+						return;
+					}
+					
+					oldBalance=loyaltyCardReader.readDataFromMemory(CardConstants.LOAD_PAGE);
+					oldPoints=loyaltyCardReader.readDataFromMemory(CardConstants.POINTS_PAGE);
+					oldAdditionalOnNextReload=loyaltyCardReader.readDataFromMemory(CardConstants.ADDITIONAL_ON_NEXT_RELOAD_PAGE);
+					Map<String, Object> result=cardOperationsDAO.getTopUpValues(denomId, oldBalance, oldPoints, oldAdditionalOnNextReload);
+					
+					newBalance=(int)result.get("outnewbalance");
+					newPoints=(int)result.get("outnewpoints");
+					newAdditionalOnNextReload=(int)result.get("outnewadditionalonnextreload");
+					topUpAmount=(int)result.get("outtopupamount");
+					bonusAmount=(int)result.get("outbonusamount");
+					
+					if(loyaltyCardReader.writeToCardMemory(CardConstants.LOAD_PAGE, newBalance)){
+						if(loyaltyCardReader.writeToCardMemory(CardConstants.POINTS_PAGE, newPoints)){
+							if(loyaltyCardReader.writeToCardMemory(CardConstants.ADDITIONAL_ON_NEXT_RELOAD_PAGE, newAdditionalOnNextReload)){
+								try{
+									cardOperationsDAO.insertReloadTransactionLog(denomId, cashierId, oldBalance, newBalance, topUpAmount, bonusAmount, tagId);
+								}catch(Exception e){
+									loyaltyCardReader.writeToCardMemory(CardConstants.LOAD_PAGE, oldBalance);
+									loyaltyCardReader.writeToCardMemory(CardConstants.POINTS_PAGE, oldPoints);
+									loyaltyCardReader.writeToCardMemory(CardConstants.ADDITIONAL_ON_NEXT_RELOAD_PAGE, oldAdditionalOnNextReload);
+									e.printStackTrace();
+								}
+								
 							}
-							
 						}
 					}
 				}
-				
 			}
 			
 		}catch(Exception e){
@@ -198,24 +199,27 @@ public class CardOperationsManager {
 		int oldPoints=0;
 		try{
 			if(isConnected()){
-				oldBalance=loyaltyCardReader.readDataFromMemory(CardConstants.LOAD_PAGE);
-				oldPoints=loyaltyCardReader.readDataFromMemory(CardConstants.POINTS_PAGE);
-				InquiryObject iObject=new InquiryObject();
-				iObject.setCardLoadBalance(oldBalance);
-				iObject.setCardPointsBalance(oldPoints);
-				ApiResponse response=new ApiResponse();
-				response.setTransactionType(TransactionTypes.INQUIRE);
-				Gson gson=new Gson();
-				try {
-					response.setStatus(ResponseStatus.OK);
-					response.setStatusCode(ResponseCodes.OK);
-					response.setApiData(iObject);
-					sendMessage(gson.toJson(response));
-				} catch (Exception e) {
-					response.setStatus(ResponseStatus.OK);
-					response.setStatusCode(ResponseCodes.OK);
-					response.setApiData(iObject);
-					e.printStackTrace();
+				if(loyaltyCardReader.isAuthenticatedBeforeAccess(CardConstants.CARD_KEY))
+				{
+					oldBalance=loyaltyCardReader.readDataFromMemory(CardConstants.LOAD_PAGE);
+					oldPoints=loyaltyCardReader.readDataFromMemory(CardConstants.POINTS_PAGE);
+					InquiryObject iObject=new InquiryObject();
+					iObject.setCardLoadBalance(oldBalance);
+					iObject.setCardPointsBalance(oldPoints);
+					ApiResponse response=new ApiResponse();
+					response.setTransactionType(TransactionTypes.INQUIRE);
+					Gson gson=new Gson();
+					try {
+						response.setStatus(ResponseStatus.OK);
+						response.setStatusCode(ResponseCodes.OK);
+						response.setApiData(iObject);
+						sendMessage(gson.toJson(response));
+					} catch (Exception e) {
+						response.setStatus(ResponseStatus.OK);
+						response.setStatusCode(ResponseCodes.OK);
+						response.setApiData(iObject);
+						e.printStackTrace();
+					}
 				}
 			}
 			
@@ -237,6 +241,9 @@ public class CardOperationsManager {
 				if(loyaltyCardReader.writeToCardMemory(CardConstants.LOAD_PAGE, preloadedAmount)){
 					try{
 						cardOperationsDAO.insertCardSaleTransactionLog(cashierId, cardGroupId, price, preloadedAmount, tagId);
+						loyaltyCardReader.protectCardMemory();
+		
+						
 					}catch(Exception e){
 						loyaltyCardReader.writeToCardMemory(CardConstants.LOAD_PAGE, 0);
 						e.printStackTrace();

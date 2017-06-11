@@ -7,18 +7,18 @@ import javax.smartcardio.CardException;
  * Interface for unified card reader integration
  */
 public class CardConstants {
-	public static byte[] MASTER_KEY = {
-	        (byte) 0x30, Constants.ENCRYPTION_KEY_2D, (byte) 0x69, (byte) 0x48,
-	        (byte) 0x38, (byte) 0x59, (byte) 0x68, (byte) 0x74,
-	        (byte) 0x35, (byte) 0x63, (byte) 0x69, (byte) 0x68,
-	        (byte) 0x36, (byte) 0x64, (byte) 0x4F, Constants.ENCRYPTION_KEY_2E
+	public static byte[] AUTHENTICATION_MASTER_KEY = {
+	        (byte) 0x48, (byte) 0x29, (byte) 0x29, (byte) 0xAE,
+	        (byte) 0x58, (byte) 0x69, (byte) 0x08, (byte) 0x2A,
+	        (byte) 0x25, (byte) 0x7E, (byte) 0x2F, (byte) 0x3C,
+	        (byte) 0x1F, (byte) 0x84, (byte) 0xEE, (byte) 0xAC
 	};
 	
 	
-	public static int MIFARE_NOT_SUPPORTED = -1;
-	public static int MIFARE_ULTRALIGHT_C = 0x02;       // MF0ICU2
-	public static int MIFARE_ULTRALIGHT_EV1_11 = 0x11;  // MF0UL11
-	public static int MIFARE_ULTRALIGHT_EV1_21 = 0x21;  // MF0UL21
+	//public static int MIFARE_NOT_SUPPORTED = -1;
+	//public static int MIFARE_ULTRALIGHT_C = 0x02;       
+	//public static int MIFARE_ULTRALIGHT_EV1_11 = 0x11;
+	public static int MIFARE_ULTRALIGHT_EV1_21 = 0x21;
 	
 	//version constants
 	public static int VERSION_RESPONSE_LENGTH = 0x08;
@@ -37,14 +37,16 @@ public class CardConstants {
 	public static int LOAD_PAGE = 0x05;
 	public static int ADDITIONAL_ON_NEXT_RELOAD_PAGE = 0x06;	
 	public static int POINTS_PAGE = 0x07;
-	public static int PWD_PROTECT_PAGE = 0xFF; //0x04;
+	public static int PWD_PROTECT_PAGE = 0xFF;
 	public static int MAX_NAME_LENGTH = 8;
 	public static int REFERENCE_NUM_LENGTH = 4;
 
 	
 	public static byte[] pad = {(byte) 0xAF};
 	
-	public static byte AUTH_CONFIG= (byte) 0x000; //xC7;
+	public static byte AUTH_CONFIG= (byte)0x00; //(byte) 0xC7;
+	
+	public static byte[] CARD_KEY=new byte[]{(byte) 0xAA,(byte) 0xCA, (byte) 0x12, (byte) 0xC2};
 	
 	
 	
