@@ -174,7 +174,7 @@ public class CardOperationsManager {
 						if(loyaltyCardReader.writeToCardMemory(CardConstants.POINTS_PAGE, newPoints)){
 							if(loyaltyCardReader.writeToCardMemory(CardConstants.ADDITIONAL_ON_NEXT_RELOAD_PAGE, newAdditionalOnNextReload)){
 								try{
-									cardOperationsDAO.insertReloadTransactionLog(denomId, cashierId, oldBalance, newBalance, topUpAmount, bonusAmount, tagId, transactionTime);
+									cardOperationsDAO.insertTransactionLog(denomId, cashierId, oldBalance, newBalance, topUpAmount, bonusAmount, tagId, transactionTime, 1);
 									TopUpResultObject tObject=new TopUpResultObject();
 									tObject.setBalanceAfterReload(newBalance);
 									tObject.setBalanceBeforeReload(oldBalance);
@@ -275,6 +275,7 @@ public class CardOperationsManager {
 	public void processProductAcquire(List<ProductToAcquire> products, String transactionTime){
 		int totalPrice=0;
 		int remainingBalance=0;
+		String insertCommand="";
 		try{
 			for(ProductToAcquire pAcquire:products){
 				int productPrice=cardOperationsDAO.getPrice(pAcquire.getProductId());
