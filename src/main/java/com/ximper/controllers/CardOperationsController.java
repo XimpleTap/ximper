@@ -4,6 +4,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -13,6 +14,9 @@ import com.ximper.configurations.ApiResponse;
 import com.ximper.configurations.ResponseCodes;
 import com.ximper.configurations.ResponseStatus;
 import com.ximper.configurations.TapEndpoints;
+import com.ximper.objects.AcquireProductRequest;
+import com.ximper.objects.CardSalesRequest;
+import com.ximper.objects.TopUpRequest;
 
 @RestController
 public class CardOperationsController {
@@ -20,53 +24,26 @@ public class CardOperationsController {
 	@Autowired
 	CardOperationsManager cardOperationsManager;
 	
-	@RequestMapping(value=TapEndpoints.TAP_CARD_BALANCE_TOPUP, method=RequestMethod.GET)
+	@RequestMapping(value=TapEndpoints.TAP_CARD_BALANCE_TOPUP, method=RequestMethod.POST)
 	public ApiResponse processReload(
-			@PathVariable int denomId,
-			@PathVariable int cashierId
+			@RequestBody TopUpRequest tObject
 			)
 	{
+		ApiResponse response=new ApiResponse();
+		ThreadPoolTaskExecutor tpExec=new ThreadPoolTaskExecutor();
+		tpExec.initialize();
+		TaskExecutor taskExecutor = tpExec;
+		taskExecutor.execute(new Runnable() {
+			@Override
+			public void run() {
+				cardOperationsManager.processReload(tObject.getDenomId(), tObject.getCashierId(), tObject.getTransactionTime());
+			}
+		});
+		response.setStatus(ResponseStatus.OK);
+		response.setStatusCode(ResponseCodes.OK);
+		return response;
+	}
 
-		final int reloadProductid=denomId;
-		final int cashier=cashierId;
-		ApiResponse response=new ApiResponse();
-		ThreadPoolTaskExecutor tpExec=new ThreadPoolTaskExecutor();
-		tpExec.initialize();
-		TaskExecutor taskExecutor = tpExec;
-		taskExecutor.execute(new Runnable() {
-			@Override
-			public void run() {
-				cardOperationsManager.processReload(reloadProductid, cashier);
-			}
-		});
-		response.setStatus(ResponseStatus.OK);
-		response.setStatusCode(ResponseCodes.OK);
-		return response;
-	}
-	
-	@RequestMapping(value=TapEndpoints.TAP_CARD_BALANCE_DEDUCT, method=RequestMethod.POST)
-	public ApiResponse processDeduct(
-			@RequestParam(required=false) double amount
-			)
-	{
-	
-		final double deductAmount=amount;
-		ApiResponse response=new ApiResponse();
-		ThreadPoolTaskExecutor tpExec=new ThreadPoolTaskExecutor();
-		tpExec.initialize();
-		TaskExecutor taskExecutor = tpExec;
-		taskExecutor.execute(new Runnable() {
-			@Override
-			public void run() {
-				//cardOperationsManager.sendDeduct(deductAmount);;
-			}
-		});
-		response.setApiData(null);
-		response.setStatus(ResponseStatus.OK);
-		response.setStatusCode(ResponseCodes.OK);
-		return response;
-	}
-	
 	@RequestMapping(value=TapEndpoints.TAP_CARD_BALANCE_INQUIRE, method=RequestMethod.GET)
 	public ApiResponse inquireBalance()
 	{
@@ -109,6 +86,7 @@ public class CardOperationsController {
 	
 	@RequestMapping(value=TapEndpoints.ACQUIRE_PRODUCTS, method=RequestMethod.POST)
 	public ApiResponse acquireProducts(
+			@RequestBody AcquireProductRequest aObject
 			)
 	{
 		ApiResponse response=new ApiResponse();
@@ -118,7 +96,7 @@ public class CardOperationsController {
 		taskExecutor.execute(new Runnable() {
 			@Override
 			public void run() {
-				//cardOperationsManager.acquireProducts(acquireReq);
+				cardOperationsManager.processProductAcquire(aObject.getProductsToAcquire(), aObject.getTransactionTime());
 			}
 		});
 		response.setApiData(null);
@@ -127,10 +105,9 @@ public class CardOperationsController {
 		return response;
 	}
 	
-	@RequestMapping(value=TapEndpoints.TAP_CARD_SALES, method=RequestMethod.GET)
+	@RequestMapping(value=TapEndpoints.TAP_CARD_SALES, method=RequestMethod.POST)
 	public ApiResponse processCardSales(
-			@PathVariable int groupId,
-			@PathVariable int cashierId
+			@RequestBody CardSalesRequest cObject
 			)
 	{
 		ApiResponse response=new ApiResponse();
@@ -140,7 +117,7 @@ public class CardOperationsController {
 		taskExecutor.execute(new Runnable() {
 			@Override
 			public void run() {
-				cardOperationsManager.processCardSales(groupId, cashierId);
+				cardOperationsManager.processCardSales(cObject.getGroupId(), cObject.getCashierId(), cObject.getTransactionTime());
 			}
 		});
 		response.setApiData(null);

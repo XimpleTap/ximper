@@ -42,7 +42,16 @@ public class CardOperationsDAO {
 		return result;
 	}
 	
-	public void insertReloadTransactionLog(int denomId, int cashierId, int oldBalance, int newBalance, int topUpAmount, int bonusAmount, String tagId) throws Exception{
+	public int getPrice(int productId) throws Exception{
+		SimpleJdbcCall storeProc=new SimpleJdbcCall(jdbcTemplate).withProcedureName("GET_PRICE");
+		MapSqlParameterSource param=new MapSqlParameterSource();
+		param.addValue("inProductId", productId);
+		SqlParameterSource params=param;
+		Map<String, Object> result=storeProc.execute(params);
+		return (int)result.get("outprice");
+	}
+	
+	public void insertReloadTransactionLog(int denomId, int cashierId, int oldBalance, int newBalance, int topUpAmount, int bonusAmount, String tagId, String transactionTime) throws Exception{
 		SimpleJdbcCall storeProc=new SimpleJdbcCall(jdbcTemplate).withProcedureName("INSERT_TOPUP_TRANSACTION_LOG");
 		MapSqlParameterSource param=new MapSqlParameterSource();
 		param.addValue("inDenomId", denomId);
@@ -52,11 +61,12 @@ public class CardOperationsDAO {
 		param.addValue("inBonusAmount", bonusAmount);
 		param.addValue("inCashierId", cashierId);
 		param.addValue("inTagId", tagId);
+		param.addValue("inTransactionTime", transactionTime);
 		SqlParameterSource params=param;
 		storeProc.execute(params);
 	}
 	
-	public void insertCardSaleTransactionLog(int cashierId, int cardGroupId, int cardPrice, int preloadedAmount, String tagId) throws Exception{
+	public void insertCardSaleTransactionLog(int cashierId, int cardGroupId, int cardPrice, int preloadedAmount, String tagId, String transactionTime) throws Exception{
 		SimpleJdbcCall storeProc=new SimpleJdbcCall(jdbcTemplate).withProcedureName("INSERT_CARD_SALES_TRANSACTION_LOG");
 		MapSqlParameterSource param=new MapSqlParameterSource();
 		param.addValue("inCardGroupId", cardGroupId);
@@ -64,6 +74,7 @@ public class CardOperationsDAO {
 		param.addValue("inPrice", cardPrice);
 		param.addValue("inPreloadedAmount", preloadedAmount);
 		param.addValue("inTagId", tagId);
+		param.addValue("inTransactionTime", transactionTime);
 		SqlParameterSource params=param;
 		storeProc.execute(params);
 	}

@@ -27,6 +27,7 @@ import com.ximper.objects.CardOperationsDAO;
 import com.ximper.objects.CardSalesObject;
 import com.ximper.objects.InquiryObject;
 import com.ximper.objects.PolicyObject;
+import com.ximper.objects.ProductToAcquire;
 import com.ximper.objects.TopUpResultObject;
 import com.ximper.reader.CardConstants;
 import com.ximper.reader.LoyaltyCardReader;
@@ -135,7 +136,7 @@ public class CardOperationsManager {
 //		return Long.valueOf(cardTag, 16).toString();
 //	}
 	
-	public void processReload(int denomId, int cashierId){
+	public void processReload(int denomId, int cashierId, String transactionTime){
 		
 		int newBalance=0;
 		int newPoints=0;
@@ -173,19 +174,19 @@ public class CardOperationsManager {
 						if(loyaltyCardReader.writeToCardMemory(CardConstants.POINTS_PAGE, newPoints)){
 							if(loyaltyCardReader.writeToCardMemory(CardConstants.ADDITIONAL_ON_NEXT_RELOAD_PAGE, newAdditionalOnNextReload)){
 								try{
-									cardOperationsDAO.insertReloadTransactionLog(denomId, cashierId, oldBalance, newBalance, topUpAmount, bonusAmount, tagId);
+									cardOperationsDAO.insertReloadTransactionLog(denomId, cashierId, oldBalance, newBalance, topUpAmount, bonusAmount, tagId, transactionTime);
 									TopUpResultObject tObject=new TopUpResultObject();
 									tObject.setBalanceAfterReload(newBalance);
 									tObject.setBalanceBeforeReload(oldBalance);
 									tObject.setLoadAmount(topUpAmount);
 									tObject.setPointsAfterReload(newPoints);
 									tObject.setPointsBeforeReload(oldPoints);
-									sendResponse(tObject, TransactionTypes.RELOAD, true);
+									sendResponse(tObject, TransactionTypes.RELOAD, ResponseStatus.OK, ResponseCodes.OK);
 								}catch(Exception e){
 									loyaltyCardReader.writeToCardMemory(CardConstants.LOAD_PAGE, oldBalance);
 									loyaltyCardReader.writeToCardMemory(CardConstants.POINTS_PAGE, oldPoints);
 									loyaltyCardReader.writeToCardMemory(CardConstants.ADDITIONAL_ON_NEXT_RELOAD_PAGE, oldAdditionalOnNextReload);
-									sendResponse(null, TransactionTypes.RELOAD, false);
+									sendResponse(null, TransactionTypes.RELOAD, ResponseStatus.ERROR, ResponseCodes.ERROR);
 									e.printStackTrace();
 								}
 								
@@ -214,13 +215,13 @@ public class CardOperationsManager {
 					InquiryObject iObject=new InquiryObject();
 					iObject.setCardLoadBalance(oldBalance);
 					iObject.setCardPointsBalance(oldPoints);
-					sendResponse(iObject, TransactionTypes.INQUIRE, true);
+					sendResponse(iObject, TransactionTypes.INQUIRE, ResponseStatus.OK, ResponseCodes.OK);
 				}
 			}
 			
 		}catch(Exception e){
 			try {
-				sendResponse(null, TransactionTypes.INQUIRE, false);
+				sendResponse(null, TransactionTypes.INQUIRE, ResponseStatus.ERROR, ResponseCodes.ERROR);
 			} catch (Exception e1) {
 				e1.printStackTrace();
 			}
@@ -230,7 +231,7 @@ public class CardOperationsManager {
 		
 	}
 	
-	public void processCardSales(int cardGroupId, int cashierId){
+	public void processCardSales(int cardGroupId, int cashierId, String transactionTime){
 		try{
 			if(isConnected()){
 				String tagId=loyaltyCardReader.getTagId();
@@ -240,16 +241,16 @@ public class CardOperationsManager {
 				
 				if(loyaltyCardReader.writeToCardMemory(CardConstants.LOAD_PAGE, preloadedAmount)){
 					try{
-						cardOperationsDAO.insertCardSaleTransactionLog(cashierId, cardGroupId, price, preloadedAmount, tagId);
+						cardOperationsDAO.insertCardSaleTransactionLog(cashierId, cardGroupId, price, preloadedAmount, tagId,transactionTime);
 						loyaltyCardReader.protectCardMemory();
 						CardSalesObject cObject=new CardSalesObject();
 						cObject.setCardGroupId(cardGroupId);
 						cObject.setCardNumber(tagId);
 						cObject.setCashierId(cashierId);
-						sendResponse(cObject, TransactionTypes.SELL_CARD, true);
+						sendResponse(cObject, TransactionTypes.SELL_CARD, ResponseStatus.OK, ResponseCodes.OK);
 					}catch(Exception e){
 						loyaltyCardReader.writeToCardMemory(CardConstants.LOAD_PAGE, 0);
-						sendResponse(null, TransactionTypes.SELL_CARD, false);
+						sendResponse(null, TransactionTypes.SELL_CARD, ResponseStatus.ERROR, ResponseCodes.ERROR);
 						e.printStackTrace();
 					}
 				}
@@ -259,20 +260,49 @@ public class CardOperationsManager {
 		}
 	}
 	
-	private void sendResponse(Object responseObject, String transactionType, boolean isResponsePositive) throws Exception{
+	private void sendResponse(Object responseObject, String transactionType, String status, String code) throws Exception{
 		
 		ApiResponse response=new ApiResponse();
 		response.setApiData(responseObject);
 		response.setTransactionType(transactionType);
-		if(isResponsePositive){
-			response.setStatus(ResponseStatus.OK);
-			response.setStatusCode(ResponseCodes.OK);
-		}else{
-			response.setStatus(ResponseStatus.ERROR);
-			response.setStatusCode(ResponseCodes.ERROR);
-		}
+		response.setStatus(status);
+		response.setStatusCode(code);
 		Gson gson=new Gson();
 		sendMessage(gson.toJson(response));
 		
+	}
+	
+	public void processProductAcquire(List<ProductToAcquire> products, String transactionTime){
+		int totalPrice=0;
+		int remainingBalance=0;
+		try{
+			for(ProductToAcquire pAcquire:products){
+				int productPrice=cardOperationsDAO.getPrice(pAcquire.getProductId());
+				totalPrice=totalPrice+(pAcquire.getItemCount()*productPrice);
+			}
+			if(isConnected()){
+				if(loyaltyCardReader.isAuthenticatedBeforeAccess(CardConstants.CARD_KEY)){
+					int currentBalance=loyaltyCardReader.readDataFromMemory(CardConstants.LOAD_PAGE);
+					try{
+						if(currentBalance>=totalPrice && currentBalance>0){
+							String tagId=loyaltyCardReader.getTagId();
+							remainingBalance=currentBalance-totalPrice;
+							if(loyaltyCardReader.writeToCardMemory(CardConstants.LOAD_PAGE, remainingBalance)){
+								
+							}
+						}else{
+							sendResponse(null, TransactionTypes.ACQUIRE_PRODUCT, ResponseStatus.ERROR, "INSUFFICIENT");
+						}
+	
+						
+					}catch(Exception e){
+						
+					}
+				}
+				
+			}
+		}catch(Exception e){
+			e.printStackTrace();
+		}
 	}
 }
