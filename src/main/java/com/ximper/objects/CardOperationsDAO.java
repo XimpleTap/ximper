@@ -80,6 +80,16 @@ public class CardOperationsDAO {
 		SqlParameterSource params=param;
 		storeProc.execute(params);
 	}
+	
+	public Map<String, Object> getRequiredPoints(int rewardId, String claimDate) throws Exception{
+		SimpleJdbcCall storeProc=new SimpleJdbcCall(jdbcTemplate).withProcedureName("GET_POINTS_TO_CLAIM");
+		MapSqlParameterSource param=new MapSqlParameterSource();
+		param.addValue("inRewardId", rewardId);
+		param.addValue("inClaimDate", claimDate);
+		SqlParameterSource params=param;
+		Map<String, Object> result=storeProc.execute(params);
+		return result;
+	}
 }
 
 

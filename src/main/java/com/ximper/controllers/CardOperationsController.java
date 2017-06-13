@@ -16,6 +16,7 @@ import com.ximper.configurations.ResponseStatus;
 import com.ximper.configurations.TapEndpoints;
 import com.ximper.objects.AcquireProductRequest;
 import com.ximper.objects.CardSalesRequest;
+import com.ximper.objects.ClaimRewardRequest;
 import com.ximper.objects.TopUpRequest;
 
 @RestController
@@ -65,7 +66,7 @@ public class CardOperationsController {
 	}
 	
 	@RequestMapping(value=TapEndpoints.CLAIM_REWARDS, method=RequestMethod.POST)
-	public ApiResponse claimRewards()
+	public ApiResponse claimRewards(@RequestBody ClaimRewardRequest claimRequest)
 	{
 
 		ApiResponse response=new ApiResponse();
@@ -75,7 +76,7 @@ public class CardOperationsController {
 		taskExecutor.execute(new Runnable() {
 			@Override
 			public void run() {
-				
+				//cardOperationsManager.processRewardClaim(claimRequest.getRewardsToClaim(), claimRequest.getCashierId(), claimRequest.getTransactionTime());
 			}
 		});
 		response.setApiData(null);

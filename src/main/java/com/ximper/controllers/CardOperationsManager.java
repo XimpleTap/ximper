@@ -2,6 +2,8 @@ package com.ximper.controllers;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
@@ -31,6 +33,7 @@ import com.ximper.objects.CardSalesObject;
 import com.ximper.objects.InquiryObject;
 import com.ximper.objects.PolicyObject;
 import com.ximper.objects.ProductToAcquire;
+import com.ximper.objects.RewardToClaim;
 import com.ximper.objects.TopUpResultObject;
 import com.ximper.objects.TransactionDetailObject;
 import com.ximper.reader.CardConstants;
@@ -385,4 +388,14 @@ public class CardOperationsManager {
 			e.printStackTrace();
 		}
 	}
+	
+//	public void processRewardClaim(List<RewardToClaim> rewardsToClaim, int cashierId, String transactionTime){
+//		Date claimDate=new Date();
+//		
+//		int totalPointsToClaim=0;
+//		for(RewardToClaim rewardToClaim:rewardsToClaim){
+//			Map<String, Object> rObject=cardOperationsDAO.getRequiredPoints(rewardToClaim.getRewardId(), claimDate)
+//			//int pointToClaim=(in
+//		}
+//	}
 }
