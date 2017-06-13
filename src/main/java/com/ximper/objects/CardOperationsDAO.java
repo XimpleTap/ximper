@@ -51,7 +51,7 @@ public class CardOperationsDAO {
 		return (int)result.get("outprice");
 	}
 	
-	public void insertTransactionLog(int denomId, int cashierId, int oldBalance, int newBalance, int topUpAmount, int bonusAmount, String tagId, String transactionTime, int transactionType) throws Exception{
+	public void insertTransactionLog(int denomId, int cashierId, int oldBalance, int newBalance, int topUpAmount, int bonusAmount, String tagId, String transactionTime, int transactionType, int itemCount) throws Exception{
 		SimpleJdbcCall storeProc=new SimpleJdbcCall(jdbcTemplate).withProcedureName("INSERT_TRANSACTION_LOG");
 		MapSqlParameterSource param=new MapSqlParameterSource();
 		param.addValue("inDenomId", denomId);
@@ -63,6 +63,7 @@ public class CardOperationsDAO {
 		param.addValue("inTagId", tagId);
 		param.addValue("inTransactionTime", transactionTime);
 		param.addValue("inTransactionType", transactionType);
+		param.addValue("inItemCount", itemCount);
 		SqlParameterSource params=param;
 		storeProc.execute(params);
 	}

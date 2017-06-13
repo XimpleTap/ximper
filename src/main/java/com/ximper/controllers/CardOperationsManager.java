@@ -1,5 +1,6 @@
 package com.ximper.controllers;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -23,12 +24,14 @@ import com.ximper.configurations.CardReaderMessages;
 import com.ximper.configurations.ResponseCodes;
 import com.ximper.configurations.ResponseStatus;
 import com.ximper.configurations.TransactionTypes;
+import com.ximper.objects.AcquireProductResult;
 import com.ximper.objects.CardOperationsDAO;
 import com.ximper.objects.CardSalesObject;
 import com.ximper.objects.InquiryObject;
 import com.ximper.objects.PolicyObject;
 import com.ximper.objects.ProductToAcquire;
 import com.ximper.objects.TopUpResultObject;
+import com.ximper.objects.TransactionDetailObject;
 import com.ximper.reader.CardConstants;
 import com.ximper.reader.LoyaltyCardReader;
 import com.ximper.reader.ReaderStatusObject;
@@ -135,6 +138,17 @@ public class CardOperationsManager {
 //	private String getTagSerialNumber(String cardTag){
 //		return Long.valueOf(cardTag, 16).toString();
 //	}
+	private void sendResponse(Object responseObject, String transactionType, String status, String code) throws Exception{
+		
+		ApiResponse response=new ApiResponse();
+		response.setApiData(responseObject);
+		response.setTransactionType(transactionType);
+		response.setStatus(status);
+		response.setStatusCode(code);
+		Gson gson=new Gson();
+		sendMessage(gson.toJson(response));
+		
+	}
 	
 	public void processReload(int denomId, int cashierId, String transactionTime){
 		
@@ -174,7 +188,7 @@ public class CardOperationsManager {
 						if(loyaltyCardReader.writeToCardMemory(CardConstants.POINTS_PAGE, newPoints)){
 							if(loyaltyCardReader.writeToCardMemory(CardConstants.ADDITIONAL_ON_NEXT_RELOAD_PAGE, newAdditionalOnNextReload)){
 								try{
-									cardOperationsDAO.insertTransactionLog(denomId, cashierId, oldBalance, newBalance, topUpAmount, bonusAmount, tagId, transactionTime, 1);
+									cardOperationsDAO.insertTransactionLog(denomId, cashierId, oldBalance, newBalance, topUpAmount, bonusAmount, tagId, transactionTime, 1, 1);
 									TopUpResultObject tObject=new TopUpResultObject();
 									tObject.setBalanceAfterReload(newBalance);
 									tObject.setBalanceBeforeReload(oldBalance);
@@ -259,49 +273,100 @@ public class CardOperationsManager {
 			e.printStackTrace();
 		}
 	}
-	
-	private void sendResponse(Object responseObject, String transactionType, String status, String code) throws Exception{
-		
-		ApiResponse response=new ApiResponse();
-		response.setApiData(responseObject);
-		response.setTransactionType(transactionType);
-		response.setStatus(status);
-		response.setStatusCode(code);
-		Gson gson=new Gson();
-		sendMessage(gson.toJson(response));
-		
-	}
-	
-	public void processProductAcquire(List<ProductToAcquire> products, String transactionTime){
+
+	public void processProductAcquire(List<ProductToAcquire> products, int cashierId, String transactionTime){
+		List<TransactionDetailObject> tObjectList=new ArrayList<TransactionDetailObject>();
 		int totalPrice=0;
 		int remainingBalance=0;
-		String insertCommand="";
+		int tempBalance=0;
+		int currentBalance=0;
+		int currentPoints=0;
+		int totalItems=0;
+		int totalTransactionPoints=0;
+		int totalDenomPoints=0;
+		int qualifiedPoints=0;
 		try{
-			for(ProductToAcquire pAcquire:products){
-				int productPrice=cardOperationsDAO.getPrice(pAcquire.getProductId());
-				totalPrice=totalPrice+(pAcquire.getItemCount()*productPrice);
-			}
+			PolicyObject policy=cardOperationsDAO.getPolicy();
 			if(isConnected()){
+				String tagId=loyaltyCardReader.getTagId();
 				if(loyaltyCardReader.isAuthenticatedBeforeAccess(CardConstants.CARD_KEY)){
-					int currentBalance=loyaltyCardReader.readDataFromMemory(CardConstants.LOAD_PAGE);
-					try{
-						if(currentBalance>=totalPrice && currentBalance>0){
-							String tagId=loyaltyCardReader.getTagId();
-							remainingBalance=currentBalance-totalPrice;
-							if(loyaltyCardReader.writeToCardMemory(CardConstants.LOAD_PAGE, remainingBalance)){
-								
-							}
-						}else{
-							sendResponse(null, TransactionTypes.ACQUIRE_PRODUCT, ResponseStatus.ERROR, "INSUFFICIENT");
-						}
-	
-						
-					}catch(Exception e){
-						
+					currentBalance=loyaltyCardReader.readDataFromMemory(CardConstants.LOAD_PAGE);
+					if(currentBalance<=0){
+						sendResponse(null, TransactionTypes.ACQUIRE_PRODUCT, ResponseStatus.ERROR, "INSUFFICIENT");
+						return;
 					}
-				}
-				
+					currentPoints=loyaltyCardReader.readDataFromMemory(CardConstants.POINTS_PAGE);
+					qualifiedPoints=loyaltyCardReader.readDataFromMemory(CardConstants.ADDITIONAL_ON_NEXT_ACQUIRE_PAGE);
+					tempBalance=currentBalance;
+					for(ProductToAcquire pAcquire:products){
+						int productPrice=cardOperationsDAO.getPrice(pAcquire.getProductId());
+						int multipliedAmount=pAcquire.getItemCount()*productPrice;
+						totalPrice=totalPrice+multipliedAmount;
+						tempBalance=tempBalance-multipliedAmount;
+						totalItems=totalItems+pAcquire.getItemCount();
+						TransactionDetailObject transactionDetail=new TransactionDetailObject();
+						transactionDetail.setItemCount(pAcquire.getItemCount());
+						transactionDetail.setItemPrice(productPrice);
+						transactionDetail.setLoadBonus(0);
+						transactionDetail.setNewBalance(tempBalance);
+						transactionDetail.setOldBalance(tempBalance+multipliedAmount);
+						transactionDetail.setProductId(pAcquire.getProductId());
+						transactionDetail.setTagId(tagId);
+						transactionDetail.setTransactionTime(transactionTime);
+						transactionDetail.setTransactionType(2);
+						tObjectList.add(transactionDetail);
+						totalTransactionPoints=totalTransactionPoints+policy.getPerTransactionPoints();
+						totalDenomPoints=totalDenomPoints+((multipliedAmount/policy.getDenomForPoints())*policy.getPerDenomPoints());
+						qualifiedPoints=qualifiedPoints+multipliedAmount%policy.getDenomForPoints();
+						if(qualifiedPoints==policy.getDenomForPoints()){
+							qualifiedPoints=0;
+							totalDenomPoints=totalDenomPoints+policy.getPerDenomPoints();
+						}
+					}
+					if(currentBalance>=totalPrice && currentBalance>0){
+						remainingBalance=currentBalance-totalPrice;
+						if(loyaltyCardReader.writeToCardMemory(CardConstants.LOAD_PAGE, remainingBalance)){
+							if(policy.isRewardTransactionBased()){
+								loyaltyCardReader.writeToCardMemory(CardConstants.POINTS_PAGE, currentPoints+totalTransactionPoints);
+							}else{
+								loyaltyCardReader.writeToCardMemory(CardConstants.POINTS_PAGE, currentPoints+totalDenomPoints);
+							}
+							loyaltyCardReader.writeToCardMemory(CardConstants.ADDITIONAL_ON_NEXT_ACQUIRE_PAGE, qualifiedPoints);
+							for(TransactionDetailObject tObject:tObjectList){
+								cardOperationsDAO.insertTransactionLog(
+										tObject.getProductId(),
+										cashierId,
+										tObject.getOldBalance(),
+										tObject.getNewBalance(),
+										tObject.getItemPrice(),
+										tObject.getLoadBonus(),
+										tagId,
+										transactionTime,
+										tObject.getTransactionType(),
+										tObject.getItemCount());
+							}
+							AcquireProductResult aResult=new AcquireProductResult();
+							aResult.setTotalItems(totalItems);
+							aResult.setRemainingBalance(remainingBalance);
+							aResult.setOldBalance(currentBalance);
+							if(policy.isRewardTransactionBased()){
+								aResult.setNewPointBalance(currentPoints+totalTransactionPoints);
+								aResult.setTotalPointsAcquired(totalTransactionPoints);
+							}else{
+								aResult.setNewPointBalance(currentPoints+totalDenomPoints);
+								aResult.setTotalPointsAcquired(totalDenomPoints);
+							}
+							aResult.setPointsBeforeAcquire(currentPoints);
+							aResult.setTotalItems(totalItems);
+							aResult.setTotalPrice(totalPrice);
+							
+							sendResponse(aResult, TransactionTypes.ACQUIRE_PRODUCT, ResponseStatus.OK, ResponseCodes.OK);
+						}
+					}else{
+						sendResponse(null, TransactionTypes.ACQUIRE_PRODUCT, ResponseStatus.ERROR, "INSUFFICIENT");
+					}
 			}
+		}
 		}catch(Exception e){
 			e.printStackTrace();
 		}

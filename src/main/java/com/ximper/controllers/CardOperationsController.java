@@ -96,7 +96,7 @@ public class CardOperationsController {
 		taskExecutor.execute(new Runnable() {
 			@Override
 			public void run() {
-				cardOperationsManager.processProductAcquire(aObject.getProductsToAcquire(), aObject.getTransactionTime());
+				cardOperationsManager.processProductAcquire(aObject.getProductsToAcquire(), aObject.getCashierId(), aObject.getTransactionTime());
 			}
 		});
 		response.setApiData(null);
