@@ -25,6 +25,7 @@ import com.ximper.configurations.ResponseCodes;
 import com.ximper.configurations.ResponseStatus;
 import com.ximper.configurations.TransactionTypes;
 import com.ximper.objects.AcquireProductResult;
+import com.ximper.objects.BreakdownItem;
 import com.ximper.objects.CardOperationsDAO;
 import com.ximper.objects.CardSalesObject;
 import com.ximper.objects.InquiryObject;
@@ -276,6 +277,7 @@ public class CardOperationsManager {
 
 	public void processProductAcquire(List<ProductToAcquire> products, int cashierId, String transactionTime){
 		List<TransactionDetailObject> tObjectList=new ArrayList<TransactionDetailObject>();
+		List<BreakdownItem> bItemList=new ArrayList<BreakdownItem>();
 		int totalPrice=0;
 		int remainingBalance=0;
 		int tempBalance=0;
@@ -299,11 +301,20 @@ public class CardOperationsManager {
 					qualifiedPoints=loyaltyCardReader.readDataFromMemory(CardConstants.ADDITIONAL_ON_NEXT_ACQUIRE_PAGE);
 					tempBalance=currentBalance;
 					for(ProductToAcquire pAcquire:products){
-						int productPrice=cardOperationsDAO.getPrice(pAcquire.getProductId());
+						Map<String, Object> pDetail=cardOperationsDAO.getPriceAndName(pAcquire.getProductId());
+						int productPrice=(int)pDetail.get("outprice");
+						String productName=(String)pDetail.get("outname");
 						int multipliedAmount=pAcquire.getItemCount()*productPrice;
 						totalPrice=totalPrice+multipliedAmount;
 						tempBalance=tempBalance-multipliedAmount;
 						totalItems=totalItems+pAcquire.getItemCount();
+						BreakdownItem bItem=new BreakdownItem();
+						bItem.setItemCount(pAcquire.getItemCount());
+						bItem.setItemName(productName);
+						bItem.setItemPrice(productPrice);
+						bItem.setProductId(pAcquire.getProductId());
+						bItem.setTotalAmount(multipliedAmount);
+						bItemList.add(bItem);
 						TransactionDetailObject transactionDetail=new TransactionDetailObject();
 						transactionDetail.setItemCount(pAcquire.getItemCount());
 						transactionDetail.setItemPrice(productPrice);
@@ -346,6 +357,7 @@ public class CardOperationsManager {
 										tObject.getItemCount());
 							}
 							AcquireProductResult aResult=new AcquireProductResult();
+							aResult.setItemsBreakdown(bItemList);
 							aResult.setTotalItems(totalItems);
 							aResult.setRemainingBalance(remainingBalance);
 							aResult.setOldBalance(currentBalance);
@@ -361,6 +373,8 @@ public class CardOperationsManager {
 							aResult.setTotalPrice(totalPrice);
 							
 							sendResponse(aResult, TransactionTypes.ACQUIRE_PRODUCT, ResponseStatus.OK, ResponseCodes.OK);
+						}else{
+							sendResponse(null, TransactionTypes.ACQUIRE_PRODUCT, ResponseStatus.ERROR, ResponseCodes.ERROR);
 						}
 					}else{
 						sendResponse(null, TransactionTypes.ACQUIRE_PRODUCT, ResponseStatus.ERROR, "INSUFFICIENT");

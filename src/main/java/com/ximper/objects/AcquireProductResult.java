@@ -1,5 +1,7 @@
 package com.ximper.objects;
 
+import java.util.List;
+
 public class AcquireProductResult {
 
 	private int totalItems;
@@ -9,6 +11,8 @@ public class AcquireProductResult {
 	private int totalPointsAcquired;
 	private int newPointBalance;
 	private int pointsBeforeAcquire;
+	private List<BreakdownItem> itemsBreakdown;
+	
 	public int getTotalItems() {
 		return totalItems;
 	}
@@ -50,5 +54,11 @@ public class AcquireProductResult {
 	}
 	public void setPointsBeforeAcquire(int pointsBeforeAcquire) {
 		this.pointsBeforeAcquire = pointsBeforeAcquire;
+	}
+	public List<BreakdownItem> getItemsBreakdown() {
+		return itemsBreakdown;
+	}
+	public void setItemsBreakdown(List<BreakdownItem> itemsBreakdown) {
+		this.itemsBreakdown = itemsBreakdown;
 	}
 }

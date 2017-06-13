@@ -42,13 +42,13 @@ public class CardOperationsDAO {
 		return result;
 	}
 	
-	public int getPrice(int productId) throws Exception{
-		SimpleJdbcCall storeProc=new SimpleJdbcCall(jdbcTemplate).withProcedureName("GET_PRICE");
+	public Map<String, Object> getPriceAndName(int productId) throws Exception{
+		SimpleJdbcCall storeProc=new SimpleJdbcCall(jdbcTemplate).withProcedureName("GET_PRICE_AND_NAME");
 		MapSqlParameterSource param=new MapSqlParameterSource();
 		param.addValue("inProductId", productId);
 		SqlParameterSource params=param;
 		Map<String, Object> result=storeProc.execute(params);
-		return (int)result.get("outprice");
+		return result;
 	}
 	
 	public void insertTransactionLog(int denomId, int cashierId, int oldBalance, int newBalance, int topUpAmount, int bonusAmount, String tagId, String transactionTime, int transactionType, int itemCount) throws Exception{
