@@ -1,5 +1,7 @@
 package com.ximper.controllers;
 
+import java.text.DateFormat;
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -30,6 +32,8 @@ import com.ximper.objects.AcquireProductResult;
 import com.ximper.objects.BreakdownItem;
 import com.ximper.objects.CardOperationsDAO;
 import com.ximper.objects.CardSalesObject;
+import com.ximper.objects.ClaimBreakdown;
+import com.ximper.objects.ClaimRewardResult;
 import com.ximper.objects.InquiryObject;
 import com.ximper.objects.PolicyObject;
 import com.ximper.objects.ProductToAcquire;
@@ -389,13 +393,52 @@ public class CardOperationsManager {
 		}
 	}
 	
-//	public void processRewardClaim(List<RewardToClaim> rewardsToClaim, int cashierId, String transactionTime){
-//		Date claimDate=new Date();
-//		
-//		int totalPointsToClaim=0;
-//		for(RewardToClaim rewardToClaim:rewardsToClaim){
-//			Map<String, Object> rObject=cardOperationsDAO.getRequiredPoints(rewardToClaim.getRewardId(), claimDate)
-//			//int pointToClaim=(in
-//		}
-//	}
+	public ClaimRewardResult processRewardClaim(List<RewardToClaim> rewardsToClaim, int cashierId, String transactionTime) throws Exception{
+		List<ClaimBreakdown> breakdownList=new ArrayList<ClaimBreakdown>();
+		DateFormat formatter=new SimpleDateFormat("yyyy-MM-dd");
+		String claimDate;
+		claimDate = formatter.format(formatter.parse(transactionTime));
+		int totalPointsToClaim=0;
+		int tempPoints=0;
+		int currentPoints=0;
+		int totalItemsClaimed=0;
+		int totalEstimatedPrice=0;
+		if(loyaltyCardReader.isAuthenticatedBeforeAccess(CardConstants.CARD_KEY)){
+			for(RewardToClaim rewardToClaim:rewardsToClaim){
+				currentPoints=loyaltyCardReader.readDataFromMemory(CardConstants.POINTS_PAGE);
+				Map<String, Object> rObject=cardOperationsDAO.getRequiredPoints(rewardToClaim.getRewardId(), claimDate);
+				String rewardName=(String)rObject.get("outrewardname");
+				int equivalentPrice=(int)rObject.get("outequivalent");
+				int requiredPoints=(int)rObject.get("outpoints");
+				totalPointsToClaim=totalPointsToClaim+requiredPoints;
+				totalItemsClaimed=totalItemsClaimed+rewardToClaim.getItemCount();
+				totalEstimatedPrice=totalEstimatedPrice+equivalentPrice;
+				if(totalPointsToClaim>currentPoints){
+					this.sendResponse(null, TransactionTypes.CLAIM, ResponseStatus.ERROR, "INSUFFICIENT");
+					return null;
+				}
+				ClaimBreakdown breakdownItem=new ClaimBreakdown();
+				breakdownItem.setRewardId(rewardToClaim.getRewardId());
+				breakdownItem.setRewardCount(rewardToClaim.getItemCount());
+				breakdownItem.setPointsUsedToClaim(requiredPoints*rewardToClaim.getItemCount());
+				breakdownItem.setRewardEstimatedPrice(equivalentPrice);
+				breakdownItem.setRewardName(rewardName);
+				breakdownItem.setRewardPoints(requiredPoints);
+				breakdownItem.setTotalEstimatedPrice(equivalentPrice*rewardToClaim.getItemCount());
+				breakdownList.add(breakdownItem);
+				
+				
+			}
+			ClaimRewardResult claimResult=new ClaimRewardResult();
+			claimResult.setClaimBreakdown(breakdownList);
+			claimResult.setTotalEstimatedPrice(totalEstimatedPrice);
+			claimResult.setTotalItemsClaimed(totalItemsClaimed);
+			claimResult.setTotalPoints(totalPointsToClaim);
+			return claimResult;
+			
+		}else{
+			return null;
+		}
+		
+	}
 }
