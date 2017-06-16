@@ -76,7 +76,7 @@ public class CardOperationsController {
 		taskExecutor.execute(new Runnable() {
 			@Override
 			public void run() {
-				//cardOperationsManager.processRewardClaim(claimRequest.getRewardsToClaim(), claimRequest.getCashierId(), claimRequest.getTransactionTime());
+				cardOperationsManager.processRewardClaim(claimRequest.getRewardsToClaim(), claimRequest.getCashierId(), claimRequest.getTransactionTime());
 			}
 		});
 		response.setApiData(null);

@@ -68,6 +68,22 @@ public class CardOperationsDAO {
 		storeProc.execute(params);
 	}
 	
+	public void insertClaimTransactionLog(ClaimTransactionDetailObject claimDetail) throws Exception{
+		SimpleJdbcCall storeProc=new SimpleJdbcCall(jdbcTemplate).withProcedureName("INSERT_CLAIM_TRANSACTION_LOG");
+		MapSqlParameterSource param=new MapSqlParameterSource();
+		param.addValue("inTagId", claimDetail.getTagId());
+		param.addValue("inCashierId", claimDetail.getCashierId());
+		param.addValue("inRewardId", claimDetail.getRewardId());
+		param.addValue("inPointsBeforeClaim", claimDetail.getPointsBeforeClaim());
+		param.addValue("inPointsAfterClaim", claimDetail.getPointsAfterClaim());
+		param.addValue("inRequiredPoints", claimDetail.getRequiredPoints());
+		param.addValue("inItemCount", claimDetail.getItemCount());
+		param.addValue("inEstimatedRewardAmount", claimDetail.getEstimatedPrice());
+		param.addValue("inTransactionTime", claimDetail.getTransactionTime());
+		SqlParameterSource params=param;
+		storeProc.execute(params);
+	}
+	
 	public void insertCardSaleTransactionLog(int cashierId, int cardGroupId, int cardPrice, int preloadedAmount, String tagId, String transactionTime) throws Exception{
 		SimpleJdbcCall storeProc=new SimpleJdbcCall(jdbcTemplate).withProcedureName("INSERT_CARD_SALES_TRANSACTION_LOG");
 		MapSqlParameterSource param=new MapSqlParameterSource();

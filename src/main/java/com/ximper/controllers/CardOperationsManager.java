@@ -34,6 +34,7 @@ import com.ximper.objects.CardOperationsDAO;
 import com.ximper.objects.CardSalesObject;
 import com.ximper.objects.ClaimBreakdown;
 import com.ximper.objects.ClaimRewardResult;
+import com.ximper.objects.ClaimTransactionDetailObject;
 import com.ximper.objects.InquiryObject;
 import com.ximper.objects.PolicyObject;
 import com.ximper.objects.ProductToAcquire;
@@ -393,52 +394,83 @@ public class CardOperationsManager {
 		}
 	}
 	
-	public ClaimRewardResult processRewardClaim(List<RewardToClaim> rewardsToClaim, int cashierId, String transactionTime) throws Exception{
+	public void processRewardClaim(List<RewardToClaim> rewardsToClaim, int cashierId, String transactionTime){
+		List<ClaimTransactionDetailObject> transactionDetails =new ArrayList<ClaimTransactionDetailObject>();
 		List<ClaimBreakdown> breakdownList=new ArrayList<ClaimBreakdown>();
-		DateFormat formatter=new SimpleDateFormat("yyyy-MM-dd");
-		String claimDate;
-		claimDate = formatter.format(formatter.parse(transactionTime));
-		int totalPointsToClaim=0;
-		int tempPoints=0;
-		int currentPoints=0;
-		int totalItemsClaimed=0;
-		int totalEstimatedPrice=0;
-		if(loyaltyCardReader.isAuthenticatedBeforeAccess(CardConstants.CARD_KEY)){
-			for(RewardToClaim rewardToClaim:rewardsToClaim){
-				currentPoints=loyaltyCardReader.readDataFromMemory(CardConstants.POINTS_PAGE);
-				Map<String, Object> rObject=cardOperationsDAO.getRequiredPoints(rewardToClaim.getRewardId(), claimDate);
-				String rewardName=(String)rObject.get("outrewardname");
-				int equivalentPrice=(int)rObject.get("outequivalent");
-				int requiredPoints=(int)rObject.get("outpoints");
-				totalPointsToClaim=totalPointsToClaim+requiredPoints;
-				totalItemsClaimed=totalItemsClaimed+rewardToClaim.getItemCount();
-				totalEstimatedPrice=totalEstimatedPrice+equivalentPrice;
-				if(totalPointsToClaim>currentPoints){
-					this.sendResponse(null, TransactionTypes.CLAIM, ResponseStatus.ERROR, "INSUFFICIENT");
-					return null;
+		try{
+			DateFormat formatter=new SimpleDateFormat("yyyy-MM-dd");
+			String claimDate;
+			claimDate = formatter.format(formatter.parse(transactionTime));
+			int totalPointsToClaim=0;
+			int tempPoints=0;
+			int currentPoints=0;
+			int totalItemsClaimed=0;
+			int totalEstimatedPrice=0;
+			if(loyaltyCardReader.isAuthenticatedBeforeAccess(CardConstants.CARD_KEY)){
+				for(RewardToClaim rewardToClaim:rewardsToClaim){
+					currentPoints=loyaltyCardReader.readDataFromMemory(CardConstants.POINTS_PAGE);
+					Map<String, Object> rObject=cardOperationsDAO.getRequiredPoints(rewardToClaim.getRewardId(), claimDate);
+					String rewardName=(String)rObject.get("outrewardname");
+					int equivalentPrice=(int)rObject.get("outequivalent");
+					int requiredPoints=(int)rObject.get("outpoints");
+					totalPointsToClaim=totalPointsToClaim+(requiredPoints*rewardToClaim.getItemCount());
+					totalItemsClaimed=totalItemsClaimed+rewardToClaim.getItemCount();
+					totalEstimatedPrice=totalEstimatedPrice+equivalentPrice;
+					if(totalPointsToClaim>currentPoints){
+						this.sendResponse(null, TransactionTypes.CLAIM, ResponseStatus.ERROR, "INSUFFICIENT");
+					}
+					
+					ClaimBreakdown breakdownItem=new ClaimBreakdown();
+					breakdownItem.setRewardId(rewardToClaim.getRewardId());
+					breakdownItem.setRewardCount(rewardToClaim.getItemCount());
+					breakdownItem.setPointsUsedToClaim(requiredPoints*rewardToClaim.getItemCount());
+					breakdownItem.setRewardEstimatedPrice(equivalentPrice*rewardToClaim.getItemCount());
+					breakdownItem.setRewardName(rewardName);
+					breakdownItem.setRewardPoints(requiredPoints);
+					breakdownItem.setTotalEstimatedPrice(equivalentPrice*rewardToClaim.getItemCount());
+					breakdownList.add(breakdownItem);
 				}
-				ClaimBreakdown breakdownItem=new ClaimBreakdown();
-				breakdownItem.setRewardId(rewardToClaim.getRewardId());
-				breakdownItem.setRewardCount(rewardToClaim.getItemCount());
-				breakdownItem.setPointsUsedToClaim(requiredPoints*rewardToClaim.getItemCount());
-				breakdownItem.setRewardEstimatedPrice(equivalentPrice);
-				breakdownItem.setRewardName(rewardName);
-				breakdownItem.setRewardPoints(requiredPoints);
-				breakdownItem.setTotalEstimatedPrice(equivalentPrice*rewardToClaim.getItemCount());
-				breakdownList.add(breakdownItem);
+				tempPoints=totalPointsToClaim;
+				for(ClaimBreakdown item:breakdownList){
+					tempPoints=tempPoints-(item.getRewardCount()*item.getRewardPoints());
+					ClaimTransactionDetailObject transactionDetail=new ClaimTransactionDetailObject();
+					transactionDetail.setCashierId(cashierId);
+					transactionDetail.setEstimatedPrice(item.getRewardEstimatedPrice());
+					transactionDetail.setItemCount(item.getRewardCount());
+					transactionDetail.setPointsAfterClaim(tempPoints);
+					transactionDetail.setPointsBeforeClaim(tempPoints+(item.getRewardCount()*item.getRewardPoints()));
+					transactionDetails.add(transactionDetail);
+				}
+				
+				for(ClaimTransactionDetailObject claimDetail:transactionDetails){
+					cardOperationsDAO.insertClaimTransactionLog(claimDetail);
+				}
+				ClaimRewardResult claimResult=new ClaimRewardResult();
+				claimResult.setClaimBreakdown(breakdownList);
+				claimResult.setTotalEstimatedPrice(totalEstimatedPrice);
+				claimResult.setTotalItemsClaimed(totalItemsClaimed);
+				claimResult.setTotalPoints(totalPointsToClaim);
+				
+				if(loyaltyCardReader.writeToCardMemory(CardConstants.POINTS_PAGE, tempPoints)){
+					
+				}else{
+					this.sendResponse(null, TransactionTypes.CLAIM, ResponseStatus.ERROR, ResponseCodes.ERROR);
+				}
 				
 				
 			}
-			ClaimRewardResult claimResult=new ClaimRewardResult();
-			claimResult.setClaimBreakdown(breakdownList);
-			claimResult.setTotalEstimatedPrice(totalEstimatedPrice);
-			claimResult.setTotalItemsClaimed(totalItemsClaimed);
-			claimResult.setTotalPoints(totalPointsToClaim);
-			return claimResult;
-			
-		}else{
-			return null;
+			else
+			{
+				this.sendResponse(null, TransactionTypes.CLAIM, ResponseStatus.ERROR, ResponseCodes.ERROR);
+			}
 		}
-		
+		catch(Exception e)
+		{
+			try {
+				this.sendResponse(null, TransactionTypes.CLAIM, ResponseStatus.ERROR, ResponseCodes.ERROR);
+			} catch (Exception e1) {
+				e1.printStackTrace();
+			}
+		}
 	}
 }
