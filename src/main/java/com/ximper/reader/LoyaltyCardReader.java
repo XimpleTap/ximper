@@ -5,9 +5,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.security.Security;
 import java.util.Arrays;
-
 import javax.smartcardio.*;
-
 import com.ximper.configurations.CardReaderMessages;
 import com.ximper.tools.AES128Encryption;
 import com.ximper.tools.Utils;
@@ -96,6 +94,41 @@ public class LoyaltyCardReader {
 			 * is the input data
 			 */
 			byte[] dataBytes = ByteBuffer.allocate(4).putInt(dataToWrite).array();
+			byte[] prefix = new byte[] { (byte) 0xFF, (byte) 0xD6, 0x00, (byte) pageNumber };
+			// byte[] prefix = new byte[] { (byte) 0xFF, (byte) 0xA2,
+			// 0x00,(byte) pageNumber};
+			ByteArrayOutputStream payload = new ByteArrayOutputStream();
+			payload.write(prefix);
+			payload.write(dataBytes.length);
+			payload.write(dataBytes);
+
+			byte[] cmd = payload.toByteArray();
+			ResponseAPDU responseApdu = cardChannel.transmit(new CommandAPDU(cmd));
+			byte[] response = responseApdu.getBytes();
+			if (responseApdu.getSW() != 0x9000) {
+				throw new IOException();
+			}
+			result = true;
+		} catch (IOException ioe) {
+			ioe.printStackTrace();
+			result = false;
+		} catch (CardException ce) {
+			ce.printStackTrace();
+			result = false;
+		}
+
+		return result;
+	}
+	
+	public boolean writeToCardMemory(int pageNumber, byte[] dataBytes) {
+		boolean result;
+		try {
+			/*
+			 * APDU Command: "WRITE_DATA" Example: FF D6 00 06 04 00 00 00 01 -
+			 * 06 is the page number - 04 is the input data length - 00 00 00 01
+			 * is the input data
+			 */
+
 			byte[] prefix = new byte[] { (byte) 0xFF, (byte) 0xD6, 0x00, (byte) pageNumber };
 			// byte[] prefix = new byte[] { (byte) 0xFF, (byte) 0xA2,
 			// 0x00,(byte) pageNumber};
@@ -226,37 +259,6 @@ public class LoyaltyCardReader {
 			if (setAccessResponse.getSW() != 0x9000) {
 				throw new CardException("");
 			}
-			/*
-			 * byte[] pwdAuthCmd = new byte[] { (byte) 0xFF, 0x00, 0x00, 0x00,
-			 * 0x07, (byte) 0xD4, 0x42, (byte) 0x1B }; ByteArrayOutputStream
-			 * baPwdAuth = new ByteArrayOutputStream();
-			 * baPwdAuth.write(pwdAuthCmd); baPwdAuth.write(password);
-			 * 
-			 * ResponseAPDU raPwdAuth = cardChannel.transmit(new
-			 * CommandAPDU(baPwdAuth.toByteArray())); if (raPwdAuth.getSW() !=
-			 * 0x9000) { throw new CardException(""); }
-			 * 
-			 * byte[] rawPwdAuthResponse = raPwdAuth.getBytes(); byte[]
-			 * pwdAuthResponse = new byte[2];
-			 * System.arraycopy(rawPwdAuthResponse, 3, pwdAuthResponse, 0,
-			 * pwdAuthResponse.length);
-			 * 
-			 * if (Arrays.equals(pwdAuthResponse, passwordAck)) { byte[]
-			 * accessConfig = new byte[] { CardConstants.AUTH_CONFIG, 0x05,
-			 * 0x00, 0x00 }; byte[] accessConfigCmd = new byte[] { (byte) 0xFF,
-			 * (byte) 0xD6, 0x00, accessConfigAddress};
-			 * 
-			 * ByteArrayOutputStream baSetAccessConf = new
-			 * ByteArrayOutputStream(); baSetAccessConf.write(accessConfigCmd);
-			 * baSetAccessConf.write(accessConfig.length);
-			 * baSetAccessConf.write(accessConfig);
-			 * 
-			 * ResponseAPDU raSetAccess = cardChannel.transmit(new
-			 * CommandAPDU(baSetAccessConf.toByteArray())); if
-			 * (raSetAccess.getSW() != 0x9000) { throw new CardException(""); }
-			 * 
-			 * result = true; } else { throw new IOException(""); }
-			 */
 		} catch (CardException | IOException exc) {
 			result = false;
 		}
@@ -296,4 +298,5 @@ public class LoyaltyCardReader {
 
 		return result;
 	}
+	
 }

@@ -9,6 +9,8 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
+import org.joda.time.DateTime;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.converter.StringMessageConverter;
 import org.springframework.messaging.simp.stomp.StompHeaders;
@@ -256,28 +258,45 @@ public class CardOperationsManager {
 	
 	public void processCardSales(int cardGroupId, int cashierId, String transactionTime){
 		try{
+			DateTime transactionDate=new DateTime(transactionTime);
+		
+			//String formattedMonthDay=formattedDate.split(":")[0];
+			//int year=Integer.parseInt(formattedDate.split(":")[1]);
+			
 			if(isConnected()){
 				String tagId=loyaltyCardReader.getTagId();
 				Map<String, Object> result=cardOperationsDAO.getCardValues(cardGroupId);
 				int price=(int)result.get("outprice");
 				int preloadedAmount=(int)result.get("outpreloadedamount");
-				
-				if(loyaltyCardReader.writeToCardMemory(CardConstants.LOAD_PAGE, preloadedAmount)){
-					try{
-						cardOperationsDAO.insertCardSaleTransactionLog(cashierId, cardGroupId, price, preloadedAmount, tagId,transactionTime);
-						loyaltyCardReader.protectCardMemory();
-						CardSalesObject cObject=new CardSalesObject();
-						cObject.setCardGroupId(cardGroupId);
-						cObject.setCardNumber(tagId);
-						cObject.setCashierId(cashierId);
-						sendResponse(cObject, TransactionTypes.SELL_CARD, ResponseStatus.OK, ResponseCodes.OK);
-					}catch(Exception e){
-						loyaltyCardReader.writeToCardMemory(CardConstants.LOAD_PAGE, 0);
-						sendResponse(null, TransactionTypes.SELL_CARD, ResponseStatus.ERROR, ResponseCodes.ERROR);
-						e.printStackTrace();
+				int cardValidity=(int)result.get("outvalidity");
+				//year=year+cardValidity;
+				//String validityMonthDay=formattedMonthDay;
+				//String validityYear=String.valueOf(year);
+				if(loyaltyCardReader.isAuthenticatedBeforeAccess(CardConstants.CARD_KEY)){
+					if(loyaltyCardReader.writeToCardMemory(CardConstants.LOAD_PAGE, preloadedAmount)){
+						if(loyaltyCardReader.writeToCardMemory(CardConstants.CARD_EXPIRY_MONTH_AND_DAY, "".getBytes())){//validityMonthDay.getBytes())){
+							if(loyaltyCardReader.writeToCardMemory(CardConstants.CARD_EXPIRY_YEAR, "".getBytes())){//validityYear.getBytes())){
+								try{
+									cardOperationsDAO.insertCardSaleTransactionLog(cashierId, cardGroupId, price, preloadedAmount, tagId,transactionTime);
+									loyaltyCardReader.protectCardMemory();
+									CardSalesObject cObject=new CardSalesObject();
+									cObject.setCardGroupId(cardGroupId);
+									cObject.setCardNumber(tagId);
+									cObject.setCashierId(cashierId);
+									sendResponse(cObject, TransactionTypes.SELL_CARD, ResponseStatus.OK, ResponseCodes.OK);
+								}catch(Exception e){
+									loyaltyCardReader.writeToCardMemory(CardConstants.LOAD_PAGE, 0);
+									sendResponse(null, TransactionTypes.SELL_CARD, ResponseStatus.ERROR, ResponseCodes.ERROR);
+									e.printStackTrace();
+								}
+							}
+						}
+						
 					}
 				}
+				
 			}
+			
 		}catch(Exception e){
 			e.printStackTrace();
 		}
@@ -398,7 +417,7 @@ public class CardOperationsManager {
 		List<ClaimTransactionDetailObject> transactionDetails =new ArrayList<ClaimTransactionDetailObject>();
 		List<ClaimBreakdown> breakdownList=new ArrayList<ClaimBreakdown>();
 		try{
-			DateFormat formatter=new SimpleDateFormat("yyyy-MM-dd");
+			DateFormat formatter=new SimpleDateFormat("yyyy-mm-dd");
 			String claimDate;
 			claimDate = formatter.format(formatter.parse(transactionTime));
 			int totalPointsToClaim=0;

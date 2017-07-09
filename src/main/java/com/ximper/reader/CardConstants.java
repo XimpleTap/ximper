@@ -38,6 +38,8 @@ public class CardConstants {
 	public static int ADDITIONAL_ON_NEXT_RELOAD_PAGE = 0x06;	
 	public static int POINTS_PAGE = 0x07;
 	public static int ADDITIONAL_ON_NEXT_ACQUIRE_PAGE = 0x08;
+	public static int CARD_EXPIRY_MONTH_AND_DAY = 0x09;
+	public static int CARD_EXPIRY_YEAR = 0x10;
 	public static int PWD_PROTECT_PAGE = 4;
 	public static int MAX_NAME_LENGTH = 8;
 	public static int REFERENCE_NUM_LENGTH = 4;
