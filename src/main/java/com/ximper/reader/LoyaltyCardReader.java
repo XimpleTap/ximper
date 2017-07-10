@@ -143,7 +143,8 @@ public class LoyaltyCardReader implements ILoyaltyCardReader{
 				throw new IOException("Read device ID failed...");
 			}
 
-			deviceId = Utils.byteArrayToStr(response, 7).trim();
+			deviceId = Utils.byteArrayToStr(response, 4).trim();
+			//deviceId = Utils.byteArrayToStr(response, 4).trim();
 			//Log.d(TAG, "TAG ID: " + deviceId);
 		} catch (IOException ioe) {
 			ioe.printStackTrace();
